@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useWorkflow } from '@/composables/useWorkflow'
-import { useUserStore } from '@/stores/user'
+import { useUser } from '@/composables/useUser'
 import type { CreateWorkflowRequest } from '@/types/api'
 
 interface Props {
@@ -81,14 +81,14 @@ const emit = defineEmits<{
 }>()
 
 const { createWorkflow, loading } = useWorkflow()
-const userStore = useUserStore()
+const { currentUser } = useUser()
 
 const formData = ref<CreateWorkflowRequest>({
   name: '',
   description: '',
   deadline: '',
-  workflowManagerId: userStore.currentUser?.id,
-  tenantId: userStore.currentUser?.tenantId,
+  workflowManagerId: currentUser.value?.id,
+  tenantId: currentUser.value?.tenantId,
 })
 
 const error = ref<string | null>(null)

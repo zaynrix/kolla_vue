@@ -1,21 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { useNotificationStore } from '@/stores/notification'
-import { useUserStore } from '@/stores/user'
+import { useNotification } from '@/composables/useNotification'
 import NotificationBadge from '@/components/presenters/NotificationBadge.vue'
 import NotificationPanel from '@/components/containers/NotificationPanel.vue'
 
-const notificationStore = useNotificationStore()
-const userStore = useUserStore()
+// ViewModel: Exposes reactive state and commands
+const { unreadCount } = useNotification()
 const showNotifications = ref(false)
-
-const unreadCount = computed(() => {
-  if (!userStore.currentUser) return 0
-  return notificationStore.unreadNotifications.filter(
-    (n) => n.userId === userStore.currentUser?.id
-  ).length
-})
 </script>
 
 <template>

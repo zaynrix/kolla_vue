@@ -56,9 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useNotificationStore } from '@/stores/notification'
-import { useUserStore } from '@/stores/user'
+import { useNotification } from '@/composables/useNotification'
 import type { Notification } from '@/types/domain'
 
 interface Props {
@@ -69,30 +67,11 @@ const props = withDefaults(defineProps<Props>(), {
   showPanel: true,
 })
 
-const notificationStore = useNotificationStore()
-const userStore = useUserStore()
+// ViewModel: Exposes reactive state and commands
+const viewModel = useNotification()
 
-const unreadNotifications = computed(() => {
-  if (!userStore.currentUser) return []
-  return notificationStore.unreadNotifications.filter(
-    (n) => n.userId === userStore.currentUser?.id
-  )
-})
-
-const readNotifications = computed(() => {
-  if (!userStore.currentUser) return []
-  return notificationStore.readNotifications.filter(
-    (n) => n.userId === userStore.currentUser?.id
-  )
-})
-
-function markAsRead(id: string) {
-  notificationStore.markAsRead(id)
-}
-
-function markAllAsRead() {
-  notificationStore.markAllAsRead()
-}
+// Expose ViewModel state and commands to template
+const { unreadNotifications, readNotifications, markAsRead, markAllAsRead } = viewModel
 
 function handleNotificationClick(notification: Notification) {
   markAsRead(notification.id)

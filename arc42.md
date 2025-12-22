@@ -107,25 +107,32 @@ Das System folgt einer **MVVM (Model-View-ViewModel)** Architektur kombiniert mi
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        VIEW LAYER                            │
+│  (Pure Presentation - Templates only)                       │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Container   │  │  Presenter   │  │    Views     │     │
-│  │  Components  │  │  Components  │  │              │     │
+│  │   View       │  │  Reusable    │  │  Page Views  │     │
+│  │ Components   │  │  UI Components│  │              │     │
+│  │ (bind to VM) │  │  (pure props) │  │              │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘     │
 └─────────────────────────────────────────────────────────────┘
                             │
+                            │ binds to (reactive state & commands)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    VIEWMODEL LAYER                           │
+│                    VIEWMODEL LAYER                          │
+│  (Presentation Logic - Composables)                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Composables │  │   Hooks      │  │   Services   │     │
-│  │  (Business   │  │  (Reusable   │  │  (API, Auth) │     │
-│  │   Logic)     │  │   Logic)     │  │              │     │
+│  │  Composables │  │   Services   │  │   Helpers    │     │
+│  │  (expose     │  │  (API, Auth) │  │              │     │
+│  │   state &    │  │              │  │              │     │
+│  │   commands)   │  │              │  │              │     │
 │  └──────────────┘  └──────────────┘  └──────────────┘     │
 └─────────────────────────────────────────────────────────────┘
                             │
+                            │ uses (business logic & data)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                       MODEL LAYER                            │
+│  (Business Logic & Domain Data)                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
 │  │    Stores    │  │   Domain     │  │     DTOs     │     │
 │  │   (Pinia)    │  │   Models     │  │              │     │
@@ -170,73 +177,135 @@ Das System folgt einer **MVVM (Model-View-ViewModel)** Architektur kombiniert mi
 
 #### 5.2.1 View Layer
 
-**Container Components** (`src/components/containers/`):
-- `WorkflowListContainer.vue`: Container für Workflow-Liste
-- `WorkflowDetailsPanel.vue`: Container für Workflow-Details
-- `CreateWorkflowForm.vue`: Container für Workflow-Erstellung
-- `CreateWorkStepForm.vue`: Container für Work Step-Erstellung
-- `NotificationPanel.vue`: Container für Benachrichtigungen
+**MVVM Prinzip**: Views sind rein präsentational. Sie binden nur an ViewModels und enthalten keine Business-Logik.
 
-**Presenter Components** (`src/components/presenters/`):
-- `WorkflowCard.vue`: Präsentation einer Workflow-Karte
-- `WorkStepCard.vue`: Präsentation einer Work Step-Karte
-- `WorkStepBoard.vue`: Präsentation eines Kanban-Boards
-- `UserSelector.vue`: Präsentation eines User-Selectors
+**View Components** (`src/components/containers/`):
+- `WorkflowListContainer.vue`: View Component für Workflow-Liste (bindet an `useWorkflow` ViewModel)
+- `WorkflowDetailsPanel.vue`: View Component für Workflow-Details (bindet an `useWorkflow` ViewModel)
+- `CreateWorkflowForm.vue`: View Component für Workflow-Erstellung (bindet an `useWorkflow` ViewModel)
+- `CreateWorkStepForm.vue`: View Component für Work Step-Erstellung (bindet an `useWorkStep` ViewModel)
+- `ObjectiveListContainer.vue`: View Component für Objective-Liste (bindet an `useObjective` ViewModel)
+- `NotificationPanel.vue`: View Component für Benachrichtigungen (bindet an `useNotification` ViewModel)
 
-**Views** (`src/views/`):
-- `ActorDashboardView.vue`: Dashboard für Akteure
-- `WorkflowManagerDashboardView.vue`: Dashboard für Workflowmanager
-- `WorkflowsView.vue`: Übersicht aller Workflows
+**Reusable UI Components** (`src/components/presenters/`):
+- `WorkflowCard.vue`: Reusable UI Component - reine Präsentation (Props + Events)
+- `WorkStepCard.vue`: Reusable UI Component - reine Präsentation (Props + Events)
+- `WorkStepBoard.vue`: Reusable UI Component - Präsentation eines Kanban-Boards
+- `ObjectiveCard.vue`: Reusable UI Component - Präsentation einer Objective-Karte
+- `UserSelector.vue`: Reusable UI Component - Präsentation eines User-Selectors
+
+**Page Views** (`src/views/`):
+- `ActorDashboardView.vue`: Page View - Dashboard für Akteure (orchestriert View Components)
+- `WorkflowManagerDashboardView.vue`: Page View - Dashboard für Workflowmanager
+- `WorkflowsView.vue`: Page View - Übersicht aller Workflows
 
 #### 5.2.2 ViewModel Layer
 
-**Composables** (`src/composables/`):
-- `useWorkflow.ts`: Workflow-Operationen und Business Logic
-- `useWorkStep.ts`: Work Step-Operationen und automatische Zuweisung
-- `useWorkflowManager.ts`: Workflowmanager-spezifische Funktionen
-- `useAuthorization.ts`: Berechtigungsprüfung
+**MVVM Prinzip**: ViewModels exponieren reaktiven State und Commands für Views. Sie transformieren Model-Daten für die Präsentation.
+
+**Composables (ViewModels)** (`src/composables/`):
+- `useWorkflow.ts`: Workflow ViewModel - exponiert workflows State, loading, error, und Commands (load, create, update, delete)
+- `useWorkStep.ts`: WorkStep ViewModel - exponiert work steps State und Commands, automatische Zuweisung
+- `useObjective.ts`: Objective ViewModel - exponiert objectives State, Filtering, Priorisierung und Commands
+- `useActor.ts`: Actor ViewModel - exponiert actors State und Commands
+- `useRole.ts`: Role ViewModel - exponiert roles State und Commands
+- `useWorkflowManager.ts`: WorkflowManager ViewModel - exponiert manager-spezifischen State und Commands
+- `useAuthorization.ts`: Authorization ViewModel - exponiert Berechtigungsprüfungen
+- `usePriority.ts`: Priority ViewModel Helper - Prioritätsberechnung für Präsentation
 - `useApi.ts`: Dependency Injection für API Services
-- `usePriority.ts`: Prioritätsberechnung
 
 **Services** (`src/services/`):
-- `api/`: API Services (REST API Client, Mock API)
-- `authorization/`: Authorization Service für Berechtigungen
+- `api/`: API Services (REST API Client, Mock API) - werden von ViewModels verwendet
+- `authorization/`: Authorization Service - wird von ViewModels verwendet
 
 #### 5.2.3 Model Layer
 
-**Stores** (`src/stores/`):
-- `workflow.ts`: Workflow State Management
-- `workStep.ts`: Work Step State Management mit Priorisierung
-- `user.ts`: User und Rollen Management
-- `notification.ts`: Notification State Management
+**MVVM Prinzip**: Models enthalten Business-Logik und Domain-Daten. Sie werden nur über ViewModels zugänglich gemacht, nie direkt von Views.
 
-**Domain Models** (`src/types/domain.ts`):
-- `Workflow`: Workflow-Entität
-- `WorkStep`: Arbeitsschritt-Entität
-- `User`: Benutzer-Entität
-- `Notification`: Benachrichtigungs-Entität
+**Stores (Models)** (`src/stores/`):
+- `workflow.ts`: Workflow Model - Business-Logik und State für Workflows
+- `workStep.ts`: WorkStep Model - Business-Logik und State für Work Steps mit Priorisierung
+- `objective.ts`: Objective Model - Business-Logik und State für Objectives mit Prioritätsberechnung
+- `user.ts`: User Model - Business-Logik und State für User und Rollen
+- `notification.ts`: Notification Model - Business-Logik und State für Benachrichtigungen
+
+**Domain Model Types** (`src/types/domain.ts`):
+- TypeScript type definitions (interfaces, enums) für Domain Models
+- `Workflow`: Workflow-Entität (Type Definition)
+- `WorkStep`: Arbeitsschritt-Entität (Type Definition)
+- `Objective`: Objective-Entität (Type Definition)
+- `User`: Benutzer-Entität (Type Definition)
+- `Actor`: Akteur-Entität (Type Definition)
+- `Notification`: Benachrichtigungs-Entität (Type Definition)
+- `Priority`, `TaskStatus`, `Role`: Enums für Domain-Logik
 - `SystemActor`: System-Akteur (für zukünftige Erweiterung)
 
-**DTOs** (`src/types/api.ts`):
-- API Request/Response Types
-- Data Transfer Objects
+**API DTO Types** (`src/types/api.ts`):
+- TypeScript type definitions für API-Kommunikation
+- `CreateWorkflowRequest`, `UpdateWorkStepRequest`, etc.
+- Data Transfer Objects für API-Kommunikation
+
+**Authorization Types** (`src/types/authorization.ts`):
+- TypeScript type definitions für Berechtigungen
+- `Permission`, `AuthorizationResult`, `IAuthorizationService`
+
+**MVVM Hinweis**: TypeScript Types sind compile-time only und können in jeder Schicht (View, ViewModel, Model) importiert werden. Dies verletzt NICHT MVVM-Prinzipien. Die MVVM-Restriktion gilt nur für **runtime Models (Stores)**, nicht für Type-Definitionen.
 
 ### 5.3 Schnittstellen
 
-#### 5.3.1 View ↔ ViewModel
+#### 5.3.1 View ↔ ViewModel (MVVM Data Binding)
 
-- **Container Components** verwenden **Composables** via `use*()` Hooks
-- **Presenter Components** erhalten Props und emittieren Events
-- **Views** orchestrieren Container und Presenter Components
+**MVVM Prinzip**: Views binden nur an ViewModels, nie direkt an Models.
+
+- **View Components** verwenden **ViewModels (Composables)** via `use*()` Hooks
+  - Binden an reaktiven State: `{{ viewModel.data }}`
+  - Rufen Commands auf: `@click="viewModel.command()"`
+- **Reusable UI Components** erhalten Props und emittieren Events (keine ViewModel-Abhängigkeit)
+- **Page Views** orchestrieren View Components und verwenden ViewModels für Page-Level State
+
+**Beispiel**:
+```vue
+<!-- View Component -->
+<script setup>
+const viewModel = useWorkflow() // ViewModel
+</script>
+<template>
+  <div v-if="viewModel.loading">Loading...</div>
+  <WorkflowCard 
+    v-for="w in viewModel.workflows" 
+    :workflow="w"
+    @edit="viewModel.handleEdit"
+  />
+</template>
+```
 
 #### 5.3.2 ViewModel ↔ Model
 
-- **Composables** verwenden **Stores** via `use*Store()` Hooks
-- **Services** kommunizieren mit **API** (REST oder Mock)
+**MVVM Prinzip**: ViewModels verwenden Models für Business-Logik und Daten.
+
+- **ViewModels (Composables)** verwenden **Models (Stores)** via `use*Store()` Hooks
+- **ViewModels** transformieren Model-Daten für Präsentation
+- **Services** werden von ViewModels verwendet für API-Kommunikation
 - **Dependency Injection** via `provide/inject` für Testbarkeit
+
+**Beispiel**:
+```typescript
+// ViewModel
+export function useWorkflow() {
+  const store = useWorkflowStore() // Model
+  const workflows = computed(() => store.workflows) // Transform für View
+  const loadWorkflows = async () => {
+    const data = await api.workflow.getAllWorkflows()
+    store.setWorkflows(data) // Update Model
+  }
+  return { workflows, loadWorkflows }
+}
+```
 
 #### 5.3.3 Model ↔ External
 
+- **Models (Stores)** enthalten Business-Logik, keine direkte API-Kommunikation
+- **API Services** werden von ViewModels verwendet
 - **API Client** kommuniziert mit Backend (REST API)
 - **Mock API** simuliert Backend für Prototyp
 
@@ -423,27 +492,30 @@ WorkflowManager          ViewModel              Model
 
 ---
 
-### 9.2 Entscheidung: Container-Presenter Pattern
+### 9.2 Entscheidung: MVVM Architektur mit View-ViewModel Trennung
 
-**Kontext**: Benötigt isolierte, testbare UI-Komponenten
+**Kontext**: Benötigt klare Trennung zwischen UI und Business-Logik für Modifiability
 
-**Entscheidung**: Container-Presenter Pattern für Components
+**Entscheidung**: MVVM Pattern mit View-ViewModel-Modell Trennung
 
 **Konsequenzen**:
 - ✅ **Vorteile**:
-  - Presenter Components sind "dumb" (nur Präsentation)
-  - Container Components orchestrieren Business Logic
-  - Einfache Unit-Tests für Presenter Components
-  - GUI portierbar ohne Logik-Änderungen
+  - Views sind rein präsentational (nur Templates)
+  - ViewModels kapseln Präsentationslogik und State
+  - Models enthalten Business-Logik unabhängig von UI
+  - Einfache Unit-Tests für jede Schicht
+  - GUI portierbar ohne Logik-Änderungen (Views können ausgetauscht werden)
+  - ViewModels können von mehreren Views wiederverwendet werden
 - ⚠️ **Nachteile**:
-  - Mehr Komponenten
-  - Potenzielle Over-Engineering für einfache Komponenten
+  - Mehr Abstraktionsebenen
+  - Potenzielle Over-Engineering für sehr einfache Komponenten
 
 **Alternativen erwogen**:
-- **Smart/Dumb Components**: Ähnlich, aber weniger strukturiert
-- **All-in-One Components**: Zu eng gekoppelt
+- **MVC**: Zu eng gekoppelt, weniger flexibel
+- **MVP**: Ähnlich, aber MVVM besser für reaktive Frameworks wie Vue
+- **Container-Presenter**: MVP-Variante, weniger klar als MVVM
 
-**Begründung**: Erfüllt Modifiability & Portability-Anforderungen (GUI portierbar ≤4h)
+**Begründung**: Erfüllt Modifiability & Portability-Anforderungen (GUI portierbar ≤4h, GUI ändern ≤1h, Logik ändern ≤4h)
 
 ---
 

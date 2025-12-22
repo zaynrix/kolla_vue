@@ -166,7 +166,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
 import { useWorkflow } from '@/composables/useWorkflow'
-import { useUserStore } from '@/stores/user'
+import { useUser } from '@/composables/useUser'
 import { usePriority } from '@/composables/usePriority'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
 import WorkStepBoard from '@/components/presenters/WorkStepBoard.vue'
@@ -181,10 +181,10 @@ const viewMode = ref<ViewMode>('board')
 const selectedUserId = ref<string>('')
 const { myWorkSteps, prioritizedWorkSteps, loading, error, loadMyWorkSteps, completeWorkStep, loadWorkSteps, updateWorkStep } = useWorkStep()
 const { workflows, loadWorkflows } = useWorkflow()
-const userStore = useUserStore()
+const { currentUser, availableUsers: viewModelUsers } = useUser()
 
-const currentUser = computed(() => userStore.currentUser)
-const availableUsers = computed(() => mockUsers)
+// Use ViewModel users, fallback to mockUsers if needed
+const availableUsers = computed(() => viewModelUsers.value.length > 0 ? viewModelUsers.value : mockUsers)
 
 // Get all work steps or filtered by selected user (supports multiple assignments)
 const displayedWorkSteps = computed(() => {

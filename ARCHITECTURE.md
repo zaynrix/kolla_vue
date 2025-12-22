@@ -8,68 +8,95 @@ This project follows the **MVVM (Model-View-ViewModel)** architectural pattern c
 
 ### 1. Model Layer (`/src/stores`)
 
-**Purpose**: Centralized reactive state management using Pinia.
+**Purpose**: Business logic and domain data. Models contain the core business logic and state that is independent of any UI.
 
 **Responsibilities**:
 - Store domain models (Workflows, Objectives, Users, Notifications)
 - Manage application state reactively
-- No UI or technical dependencies for high testability
+- Contain business logic (priority calculation, validation, etc.)
+- No UI or View dependencies for high testability
 - Priority calculation logic (immediate: ≤8h, medium-term: ≤32h, long-term: >32h)
 
-**Stores**:
-- `workflow.ts` - Workflow state management
-- `objective.ts` - Objective/Task state management with priority logic
-- `user.ts` - User and role management
-- `notification.ts` - Notification state management
+**MVVM Principle**: Models are accessed only through ViewModels. Views never directly access Models.
+
+**Stores (Models)**:
+- `workflow.ts` - Workflow Model: stores workflow state and business logic
+- `workStep.ts` - WorkStep Model: stores work step state with priority logic
+- `objective.ts` - Objective Model: stores objective state with priority calculation
+- `user.ts` - User Model: stores user and role state
+- `notification.ts` - Notification Model: stores notification state
 
 **Key Features**:
 - Reactive state updates via Vue reactivity system
 - Observer pattern for real-time updates
-- Domain models independent of UI
+- Domain models independent of UI and Views
+- Pure business logic, no presentation concerns
 
 ### 2. ViewModel Layer (`/src/composables`)
 
-**Purpose**: Business logic and data transformation between Model and View.
+**Purpose**: Presentation logic and state management that connects Views to Models. ViewModels expose reactive state and commands that Views bind to.
 
 **Responsibilities**:
-- Encapsulate reusable business logic
+- Expose reactive state to Views (computed properties, refs)
+- Expose commands/actions that Views can call
+- Transform Model data for presentation
 - Handle data fetching and API communication
-- Transform data for presentation
-- Event handling and state updates
+- Manage View-specific state (loading, errors, filters)
+- Coordinate between Views and Models
 
-**Composables**:
-- `usePriority.ts` - Priority calculation based on deadline and duration
-- `useWorkflow.ts` - Workflow operations, filtering, and management
-- `useObjective.ts` - Objective operations, filtering, and prioritization
+**MVVM Principle**: ViewModels are the bridge between Views and Models. Views only interact with ViewModels, never directly with Models.
+
+**Composables (ViewModels)**:
+- `useWorkflow.ts` - Workflow ViewModel: exposes workflows state, loading, error, and commands (load, create, update, delete)
+- `useObjective.ts` - Objective ViewModel: exposes objectives state, filtering, prioritization, and commands
+- `useWorkStep.ts` - WorkStep ViewModel: exposes work steps state and commands
+- `useActor.ts` - Actor ViewModel: exposes actors state and commands
+- `useRole.ts` - Role ViewModel: exposes roles state and commands
+- `usePriority.ts` - Priority calculation ViewModel helper
+- `useWorkflowManager.ts` - WorkflowManager ViewModel: exposes manager-specific state and commands
+- `useAuthorization.ts` - Authorization ViewModel: exposes authorization checks
 - `useApi.ts` - Dependency injection for API services
 
 **Key Features**:
+- Expose reactive state via computed properties and refs
+- Expose commands as functions that Views can call
 - Dependency Injection via `provide/inject` for testability
-- Reusable logic across components
-- Observer pattern for reactive updates
+- Reusable across multiple Views
+- Observer pattern for reactive updates (Vue reactivity)
+- No direct DOM manipulation (MVVM principle)
 
-### 3. View Layer (`/src/components`)
+### 3. View Layer (`/src/components` and `/src/views`)
 
-**Purpose**: UI presentation and user interaction.
+**Purpose**: Pure UI presentation and user interaction. Views are purely presentational and bind to ViewModels.
 
-**Structure**: **Container-Presenter Pattern** (Smart/Dumb Components)
+**MVVM Principle**: Views contain only templates and minimal presentation logic. All business logic and state management is handled by ViewModels.
 
-#### Presenters (`/src/components/presenters`)
-**Dumb Components** - Pure presentation, no business logic
-- Receive props and emit events
+#### View Components (`/src/components/containers`)
+**View Components** - Presentational components that bind to ViewModels
+- Use ViewModel composables to access state and commands
+- Contain only template and minimal presentation logic
+- Delegate all business logic to ViewModels
+- Examples: `WorkflowListContainer.vue`, `ObjectiveListContainer.vue`, `WorkflowDetailsPanel.vue`
+
+#### Reusable UI Components (`/src/components/presenters`)
+**Reusable UI Components** - Pure presentation components
+- Receive props and emit events only
+- No business logic, no ViewModel dependencies
 - Highly reusable and testable
-- Examples: `ObjectiveCard.vue`, `ObjectiveList.vue`, `WorkflowCard.vue`
+- Examples: `ObjectiveCard.vue`, `ObjectiveList.vue`, `WorkflowCard.vue`, `WorkStepCard.vue`
 
-#### Containers (`/src/components/containers`)
-**Smart Components** - Handle state and business logic
-- Use ViewModel composables
-- Delegate presentation to Presenters
-- Examples: `ObjectiveListContainer.vue`, `WorkflowListContainer.vue`
+#### Page Views (`/src/views`)
+**Page Views** - Top-level route components
+- Orchestrate View components
+- Use ViewModels for page-level state
+- Examples: `WorkflowsView.vue`, `ActorDashboardView.vue`, `WorkflowManagerDashboardView.vue`
 
 **Key Features**:
+- Views are purely presentational (MVVM principle)
+- All state and commands come from ViewModels
 - Strategy pattern via slots for flexible rendering (table, cards, diagrams)
 - Component composition for reusability
-- Clear separation of concerns
+- Clear separation: View ↔ ViewModel ↔ Model
 
 ## Service Layer (`/src/services`)
 
@@ -89,18 +116,44 @@ This project follows the **MVVM (Model-View-ViewModel)** architectural pattern c
 
 ## Type System (`/src/types`)
 
-**Purpose**: Type definitions for domain models and API contracts.
+**Purpose**: TypeScript type definitions for domain models and API contracts.
+
+**MVVM Note**: TypeScript types are compile-time only and can be imported in any layer (View, ViewModel, Model) for type safety. This does NOT violate MVVM principles. The MVVM restriction applies to **runtime Models (Stores)**, not type definitions.
 
 **Files**:
-- `domain.ts` - Domain models (Objective, Workflow, User, Notification, etc.)
-- `api.ts` - API DTOs (CreateObjectiveRequest, UpdateObjectiveRequest, etc.)
+- `domain.ts` - Domain model type definitions (interfaces, enums: Workflow, WorkStep, User, Notification, Priority, TaskStatus, etc.)
+- `api.ts` - API DTO type definitions (CreateWorkflowRequest, UpdateWorkStepRequest, etc.)
+- `authorization.ts` - Authorization type definitions (Permission, AuthorizationResult, etc.)
+
+**Usage**:
+- ✅ **Views can import types** for props, events, and local variables
+- ✅ **ViewModels can import types** for function parameters and return types
+- ✅ **Models can import types** for store state and actions
+- ❌ **Views should NOT import Stores** (runtime Models) - use ViewModels instead
 
 ## Key Patterns
 
-### 1. Container-Presenter Pattern
-- **Container**: Handles state, business logic, data fetching
-- **Presenter**: Pure presentation, receives props, emits events
-- **Benefit**: Separation of concerns, testability, reusability
+### 1. MVVM (Model-View-ViewModel) Pattern
+- **Model**: Business logic and domain data (Stores)
+- **View**: Pure presentation (Components/Views)
+- **ViewModel**: Presentation logic and state (Composables)
+- **Data Binding**: Views bind to ViewModels via Vue reactivity
+- **Benefit**: Clear separation of concerns, testability, maintainability
+
+**MVVM Data Flow**:
+```
+View (Component) 
+  ↓ binds to
+ViewModel (Composable) 
+  ↓ uses
+Model (Store)
+```
+
+**Rules**:
+- Views only interact with ViewModels, never directly with Models (Stores)
+- ViewModels expose reactive state and commands to Views
+- Models (Stores) contain business logic and are accessed only through ViewModels
+- **TypeScript types** can be imported in any layer for type safety (compile-time only, no runtime dependency)
 
 ### 2. Dependency Injection
 - API services injected via `provide/inject`
@@ -122,15 +175,50 @@ This project follows the **MVVM (Model-View-ViewModel)** architectural pattern c
 - Flexible component composition
 - Example: `ObjectiveCard` with action slot
 
-## Data Flow
+## MVVM Data Flow
 
 ```
-Backend API → API Service → ViewModel (Composable) → Model (Store) → View (Component)
-                                                          ↓
-                                                    Reactive Update
-                                                          ↓
-                                                    View Updates Automatically
+┌─────────────────────────────────────────────────────────────┐
+│                         VIEW LAYER                          │
+│  (Components/Views - Pure Presentation)                    │
+│                                                             │
+│  View Component binds to ViewModel via:                    │
+│  - Reactive state: {{ viewModel.data }}                    │
+│  - Commands: @click="viewModel.command()"                  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ binds to
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      VIEWMODEL LAYER                         │
+│  (Composables - Presentation Logic)                         │
+│                                                             │
+│  ViewModel exposes:                                         │
+│  - Reactive state (computed, ref)                          │
+│  - Commands (functions)                                     │
+│  - Transforms Model data for View                          │
+└────────────────────────────┬────────────────────────────────┘
+                             │ uses
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                        MODEL LAYER                          │
+│  (Stores - Business Logic & Data)                          │
+│                                                             │
+│  Model contains:                                            │
+│  - Domain state                                            │
+│  - Business logic                                          │
+│  - No UI dependencies                                      │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+                    Backend API (via Services)
 ```
+
+**Reactive Updates**:
+1. User action in View → calls ViewModel command
+2. ViewModel command → updates Model
+3. Model change → reactive update propagates to ViewModel
+4. ViewModel change → reactive update propagates to View
+5. View automatically updates (Vue reactivity)
 
 ## Priority Calculation
 
@@ -171,41 +259,137 @@ Default: `http://localhost:8080/api`
 
 ```
 src/
+├── views/               # Page Views (top-level route components)
+│   ├── WorkflowsView.vue
+│   ├── ActorDashboardView.vue
+│   └── WorkflowManagerDashboardView.vue
 ├── components/
-│   ├── containers/       # Smart components (state + logic)
-│   └── presenters/       # Dumb components (presentation only)
-├── composables/          # ViewModel layer (business logic)
+│   ├── containers/      # View Components (bind to ViewModels)
+│   │   ├── WorkflowListContainer.vue
+│   │   ├── ObjectiveListContainer.vue
+│   │   └── WorkflowDetailsPanel.vue
+│   └── presenters/      # Reusable UI Components (pure presentation)
+│       ├── WorkflowCard.vue
+│       ├── ObjectiveCard.vue
+│       └── WorkStepCard.vue
+├── composables/         # ViewModel Layer (presentation logic)
+│   ├── useWorkflow.ts   # Workflow ViewModel
+│   ├── useObjective.ts  # Objective ViewModel
+│   ├── useWorkStep.ts   # WorkStep ViewModel
+│   └── useApi.ts        # Dependency injection
+├── stores/              # Model Layer (business logic & data)
+│   ├── workflow.ts      # Workflow Model
+│   ├── workStep.ts      # WorkStep Model
+│   └── objective.ts     # Objective Model
 ├── services/
-│   └── api/             # API service layer
-├── stores/              # Model layer (Pinia stores)
-├── types/               # TypeScript type definitions
-│   ├── domain.ts        # Domain models
-│   └── api.ts          # API DTOs
-└── main.ts             # Application entry point
+│   └── api/            # API Service Layer
+├── types/              # TypeScript type definitions (shared across all layers)
+│   ├── domain.ts       # Domain model types (interfaces, enums)
+│   ├── api.ts         # API DTO types
+│   └── authorization.ts # Authorization types
+└── main.ts            # Application entry point
 ```
 
-## Usage Examples
+## MVVM Usage Examples
 
-### Using a Container Component
+### View Component Using ViewModel (MVVM Pattern)
 
 ```vue
 <template>
-  <ObjectiveListContainer
-    :workflow-id="workflowId"
-    :show-prioritized="true"
-    @edit="handleEdit"
-    @delete="handleDelete"
-  />
+  <!-- View: Pure presentation, binds to ViewModel -->
+  <div class="workflow-list-view">
+    <div v-if="viewModel.loading">Loading...</div>
+    <div v-else-if="viewModel.error">Error: {{ viewModel.error.message }}</div>
+    <div v-else>
+      <WorkflowCard
+        v-for="workflow in viewModel.workflows"
+        :key="workflow.id"
+        :workflow="workflow"
+        @edit="viewModel.handleEdit"
+        @delete="viewModel.handleDelete"
+      />
+    </div>
+  </div>
 </template>
+
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import { useWorkflow } from '@/composables/useWorkflow' // ViewModel
+import WorkflowCard from '@/components/presenters/WorkflowCard.vue' // Reusable UI
+
+// ViewModel: Exposes state and commands
+const viewModel = useWorkflow()
+
+// Load data on mount
+onMounted(() => {
+  viewModel.loadWorkflows()
+})
+</script>
 ```
 
-### Using Composables
+### ViewModel Implementation (Composable)
 
 ```typescript
-import { useWorkflow } from '@/composables/useWorkflow'
+// ViewModel: useWorkflow.ts
+import { computed } from 'vue'
+import { useWorkflowStore } from '@/stores/workflow' // Model
+import { useApi } from './useApi'
 
-const { workflows, loading, loadWorkflows } = useWorkflow()
-await loadWorkflows()
+export function useWorkflow() {
+  const store = useWorkflowStore() // Access Model
+  const api = useApi()
+  const loading = ref(false)
+  const error = ref<Error | null>(null)
+
+  // Expose reactive state to View
+  const workflows = computed(() => store.workflows)
+  
+  // Expose commands to View
+  const loadWorkflows = async () => {
+    loading.value = true
+    try {
+      const data = await api.workflow.getAllWorkflows()
+      store.setWorkflows(data) // Update Model
+    } catch (err) {
+      error.value = err as Error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    // Reactive state
+    workflows,
+    loading: computed(() => loading.value),
+    error: computed(() => error.value),
+    // Commands
+    loadWorkflows,
+  }
+}
+```
+
+### Model Implementation (Store)
+
+```typescript
+// Model: workflow.ts
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import type { Workflow } from '@/types/domain'
+
+export const useWorkflowStore = defineStore('workflow', () => {
+  // Domain state
+  const workflows = ref<Workflow[]>([])
+
+  // Business logic
+  function setWorkflows(newWorkflows: Workflow[]) {
+    workflows.value = newWorkflows
+  }
+
+  return {
+    workflows,
+    setWorkflows,
+  }
+})
 ```
 
 ### Custom Renderer Strategy

@@ -90,7 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useWorkflow } from '@/composables/useWorkflow'
 import { useWorkStep } from '@/composables/useWorkStep'
-import { useUserStore } from '@/stores/user'
+import { useUser } from '@/composables/useUser'
 import WorkflowProgressCard from '@/components/containers/WorkflowProgressCard.vue'
 import WorkflowDetailsPanel from '@/components/containers/WorkflowDetailsPanel.vue'
 import CreateWorkflowForm from '@/components/containers/CreateWorkflowForm.vue'
@@ -99,9 +99,7 @@ const selectedWorkflowId = ref<string | null>(null)
 const showCreateForm = ref(false)
 const { workflows, loading, error, loadWorkflows } = useWorkflow()
 const { loadWorkSteps } = useWorkStep()
-const userStore = useUserStore()
-
-const currentUser = computed(() => userStore.currentUser)
+const { currentUser } = useUser()
 
 async function handleWorkflowCreated(workflowId: string) {
   showCreateForm.value = false
