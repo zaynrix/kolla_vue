@@ -6,6 +6,9 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Base URL for GitHub Pages deployment
+  // Change this to '/' for local development or custom domain
+  base: process.env.NODE_ENV === 'production' ? '/kolla_vue/' : '/',
   plugins: [
     vue(),
     vueDevTools(),
