@@ -26,7 +26,9 @@ export function useUser() {
   }
 
   const loadUsers = async () => {
-    await userStore.loadUsers()
+    // Load users from API if needed
+    // For now, users are managed via Actor API
+    // This method can be implemented when needed
   }
 
   const getUserById = (id: string): User | undefined => {
@@ -45,4 +47,5 @@ export function useUser() {
     getUserById,
   }
 }
+
 

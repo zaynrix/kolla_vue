@@ -52,7 +52,7 @@ export function useNotification() {
   }
 
   const clearNotifications = () => {
-    notificationStore.clearNotifications()
+    notificationStore.clearAll()
   }
 
   return {
@@ -70,4 +70,5 @@ export function useNotification() {
     clearNotifications,
   }
 }
+
 

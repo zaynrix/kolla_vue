@@ -99,7 +99,7 @@ const selectedWorkflowId = ref<string | null>(null)
 const showCreateForm = ref(false)
 const { workflows, loading, error, loadWorkflows } = useWorkflow()
 const { loadWorkSteps } = useWorkStep()
-const { currentUser } = useUser()
+const { currentUser, setCurrentUser } = useUser()
 
 async function handleWorkflowCreated(workflowId: string) {
   showCreateForm.value = false
@@ -116,7 +116,7 @@ function handleWorkflowDeleted(workflowId: string) {
 // Set mock user for prototype (workflow manager)
 onMounted(async () => {
   if (!currentUser.value) {
-    userStore.setCurrentUser({
+    setCurrentUser({
       id: 'user-1',
       username: 'alice',
       email: 'alice@example.com',

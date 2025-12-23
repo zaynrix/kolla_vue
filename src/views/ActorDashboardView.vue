@@ -181,7 +181,7 @@ const viewMode = ref<ViewMode>('board')
 const selectedUserId = ref<string>('')
 const { myWorkSteps, prioritizedWorkSteps, loading, error, loadMyWorkSteps, completeWorkStep, loadWorkSteps, updateWorkStep } = useWorkStep()
 const { workflows, loadWorkflows } = useWorkflow()
-const { currentUser, availableUsers: viewModelUsers } = useUser()
+const { currentUser, availableUsers: viewModelUsers, setCurrentUser } = useUser()
 
 // Use ViewModel users, fallback to mockUsers if needed
 const availableUsers = computed(() => viewModelUsers.value.length > 0 ? viewModelUsers.value : mockUsers)
@@ -213,7 +213,7 @@ const assignedUsersMap = computed(() => {
 onMounted(async () => {
   // Set mock user (bob - team member)
   if (!currentUser.value) {
-    userStore.setCurrentUser({
+    setCurrentUser({
       id: 'user-2',
       username: 'bob',
       email: 'bob@example.com',
@@ -251,7 +251,7 @@ function handleUserChange(userId: string) {
     // Update current user if needed
     const user = mockUsers.find((u) => u.id === userId)
     if (user) {
-      userStore.setCurrentUser(user)
+      setCurrentUser(user)
     }
   }
 }

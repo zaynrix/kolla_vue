@@ -105,8 +105,8 @@ async function handleSubmit() {
       name: formData.value.name,
       description: formData.value.description,
       deadline: deadlineISO,
-      workflowManagerId: userStore.currentUser?.id,
-      tenantId: userStore.currentUser?.tenantId,
+      workflowManagerId: currentUser.value?.id,
+      tenantId: currentUser.value?.tenantId,
     })
 
     // Reset form
@@ -114,8 +114,8 @@ async function handleSubmit() {
       name: '',
       description: '',
       deadline: '',
-      workflowManagerId: userStore.currentUser?.id,
-      tenantId: userStore.currentUser?.tenantId,
+      workflowManagerId: currentUser.value?.id,
+      tenantId: currentUser.value?.tenantId,
     }
 
     emit('created', workflow.id)
