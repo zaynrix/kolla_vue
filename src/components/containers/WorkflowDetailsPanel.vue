@@ -119,7 +119,7 @@
 
     <!-- Actors Overview -->
     <div v-if="canManage" class="panel-actors">
-      <h3>Actors Overview</h3>
+      <h3>Users Overview</h3>
       <div class="actors-list">
         <div
           v-for="actor in assignedActors"
@@ -158,7 +158,7 @@ import CreateWorkStepForm from './CreateWorkStepForm.vue'
 import EditWorkStepForm from './EditWorkStepForm.vue'
 import EditWorkflowForm from './EditWorkflowForm.vue'
 import ActorWorkStepsView from './ActorWorkStepsView.vue'
-import { mockUsers } from '@/services/mock/mockData'
+import { useActor } from '@/composables/useActor'
 import type { WorkStep, Priority, User } from '@/types/domain'
 import { Priority as PriorityEnum } from '@/types/domain'
 
@@ -179,6 +179,7 @@ const { workSteps, loadWorkSteps: reloadWorkSteps, deleteWorkStep } = useWorkSte
 const { getWorkflowProgress, setManualPriority } = useWorkflowManager()
 const { canManageWorkflow: checkCanManageWorkflow } = useAuthorization()
 const { completeWorkStep, loadWorkSteps } = useWorkStep()
+const { actors, loadActors } = useActor()
 
 const showCreateStepForm = ref(false)
 const showEditStepForm = ref(false)
@@ -204,7 +205,7 @@ const sortedWorkSteps = computed(() => {
 })
 
 onMounted(async () => {
-  await loadWorkflows()
+  await Promise.all([loadActors(), loadWorkflows()])
   await reloadWorkSteps()
 })
 
@@ -214,7 +215,7 @@ function getPriorityForStep(workStep: WorkStep): Priority {
 
 function isUrgentStep(workStep: WorkStep): boolean {
   const priority = getPriorityForStep(workStep)
-  return priority === PriorityEnum.IMMEDIATE
+  return priority === PriorityEnum.SHORT_TERM
 }
 
 function isDeadlineApproachingStep(workStep: WorkStep): boolean {
@@ -237,7 +238,7 @@ async function handleComplete(workStepId: string) {
 }
 
 async function handleSetPriority(workStepId: string) {
-  const priorities: Priority[] = [PriorityEnum.IMMEDIATE, PriorityEnum.MEDIUM_TERM, PriorityEnum.LONG_TERM]
+  const priorities: Priority[] = [PriorityEnum.SHORT_TERM, PriorityEnum.MID_TERM, PriorityEnum.LONG_TERM]
   const workStep = workflowWorkSteps.value.find((ws) => ws.id === workStepId)
   if (!workStep) return
   
@@ -273,7 +274,7 @@ const assignedActors = computed(() => {
       }
     }
   })
-  return mockUsers.filter((user) => actorIds.has(user.id))
+  return actors.value.filter((actor) => actorIds.has(actor.guid))
 })
 
 function getActorWorkStepsCount(actorId: string): number {
@@ -289,8 +290,8 @@ function getActorWorkStepsCount(actorId: string): number {
 // Create map of user IDs to usernames for display
 const assignedUsersMap = computed(() => {
   const map = new Map<string, string>()
-  mockUsers.forEach((user) => {
-    map.set(user.id, user.username)
+  actors.value.forEach((actor) => {
+    map.set(actor.guid, actor.displayName)
   })
   return map
 })

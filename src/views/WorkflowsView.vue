@@ -35,12 +35,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import WorkflowListContainer from '@/components/containers/WorkflowListContainer.vue'
 import ObjectiveListContainer from '@/components/containers/ObjectiveListContainer.vue'
+import { useWorkflow } from '@/composables/useWorkflow'
 
+const { deleteWorkflow, loadWorkflows } = useWorkflow()
 const searchTerm = ref('')
 const selectedWorkflowId = ref<string | null>(null)
+
+onMounted(async () => {
+  await loadWorkflows()
+})
 
 function handleViewWorkflow(id: string) {
   selectedWorkflowId.value = id
@@ -52,12 +58,21 @@ function handleEditWorkflow(id: string) {
   // Navigate to edit page or open modal
 }
 
-function handleDeleteWorkflow(id: string) {
-  if (confirm('Are you sure you want to delete this workflow?')) {
-    console.log('Delete workflow:', id)
+async function handleDeleteWorkflow(id: string) {
+  if (!confirm('Are you sure you want to delete this workflow? This will also delete all associated work steps. This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    await deleteWorkflow(id)
     if (selectedWorkflowId.value === id) {
       selectedWorkflowId.value = null
     }
+    // Reload workflows to reflect changes
+    await loadWorkflows()
+  } catch (err) {
+    console.error('Failed to delete workflow:', err)
+    alert('Failed to delete workflow. Please try again.')
   }
 }
 
@@ -96,6 +111,8 @@ function handleDeleteObjective(id: string) {
   border-top: 2px solid #e0e0e0;
 }
 </style>
+
+
 
 
 

@@ -4,17 +4,17 @@
 -->
 <template>
   <div class="create-actor-form">
-    <h3>Create New Actor</h3>
+    <h3>Create New User</h3>
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
-        <label for="actor-nickname" class="form-label">Nickname *</label>
+        <label for="actor-displayName" class="form-label">Display Name *</label>
         <input
-          id="actor-nickname"
-          v-model="formData.nickname"
+          id="actor-displayName"
+          v-model="formData.DisplayName"
           type="text"
           class="form-input"
           required
-          placeholder="e.g., john_doe"
+          placeholder="e.g., John Doe"
         />
       </div>
 
@@ -22,7 +22,7 @@
         <label for="actor-role" class="form-label">Role (Optional)</label>
         <select
           id="actor-role"
-          v-model="formData.roleGuid"
+          v-model="formData.RoleGuid"
           class="form-select"
         >
           <option value="">No role assigned</option>
@@ -42,7 +42,7 @@
         </button>
         <button type="submit" :disabled="loading" class="btn btn--primary">
           <span v-if="loading">Creating...</span>
-          <span v-else>Create Actor</span>
+          <span v-else>Create User</span>
         </button>
       </div>
     </form>
@@ -64,8 +64,8 @@ const { createActor, loading } = useActor()
 const { roles, loadRoles } = useRole()
 
 const formData = ref<CreateActorRequest>({
-  nickname: '',
-  roleGuid: undefined,
+  DisplayName: '',
+  RoleGuid: undefined,
 })
 
 const error = ref<string | null>(null)
@@ -74,23 +74,48 @@ onMounted(async () => {
   await loadRoles()
 })
 
-async function handleSubmit() {
-  error.value = null
-  try {
-    await createActor({
-      nickname: formData.value.nickname,
-      roleGuid: formData.value.roleGuid || undefined,
-    })
-    // Reset form
-    formData.value = {
-      nickname: '',
-      roleGuid: undefined,
+  async function handleSubmit() {
+    error.value = null
+    try {
+      // Validate display name
+      if (!formData.value.DisplayName || formData.value.DisplayName.trim() === '') {
+        error.value = 'Display Name is required'
+        return
+      }
+
+      console.log('Creating actor with data:', {
+        DisplayName: formData.value.DisplayName.trim(),
+        RoleGuid: formData.value.RoleGuid && formData.value.RoleGuid !== '' ? formData.value.RoleGuid : undefined,
+      })
+
+      const actorGuid = await createActor({
+        DisplayName: formData.value.DisplayName.trim(),
+        RoleGuid: formData.value.RoleGuid && formData.value.RoleGuid !== '' ? formData.value.RoleGuid : undefined,
+      })
+      
+      console.log('Actor created successfully with GUID:', actorGuid)
+      
+      // Reset form
+      formData.value = {
+        DisplayName: '',
+        RoleGuid: undefined,
+      }
+      emit('created')
+    } catch (err: any) {
+      console.error('Error creating actor:', err)
+      let errorMessage = 'Failed to create actor'
+      
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (err?.message) {
+        errorMessage = err.message
+      } else if (err?.status) {
+        errorMessage = `HTTP ${err.status}: ${err.message || 'Request failed'}`
+      }
+      
+      error.value = errorMessage
     }
-    emit('created')
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create actor'
   }
-}
 </script>
 
 <style scoped>
@@ -150,6 +175,8 @@ async function handleSubmit() {
   margin-top: var(--spacing-xl);
 }
 </style>
+
+
 
 
 

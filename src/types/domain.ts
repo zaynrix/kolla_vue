@@ -3,12 +3,21 @@
  * No UI or technical dependencies for high testability
  */
 
+// Priority enum matching the data model: ShortTerm, MidTerm, LongTerm
 export enum Priority {
-  IMMEDIATE = 'IMMEDIATE', // ≤8h
-  MEDIUM_TERM = 'MEDIUM_TERM', // ≤32h
-  LONG_TERM = 'LONG_TERM', // >32h
+  SHORT_TERM = 'ShortTerm', // ShortTerm
+  MID_TERM = 'MidTerm', // MidTerm
+  LONG_TERM = 'LongTerm', // LongTerm
 }
 
+// AssignmentStatus enum matching the data model: Planned, InProgress, Completed
+export enum AssignmentStatus {
+  PLANNED = 'Planned',
+  IN_PROGRESS = 'InProgress',
+  COMPLETED = 'Completed',
+}
+
+// Legacy TaskStatus for backward compatibility
 export enum TaskStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',

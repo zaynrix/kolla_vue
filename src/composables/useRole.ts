@@ -20,13 +20,67 @@ export function useRole() {
     loading.value = true
     error.value = null
     try {
+      console.log('[useRole] Loading roles...')
       const roleGuids = await api.role.getAllRoles()
-      const loadedRoles = await Promise.all(
-        roleGuids.map((guid: string) => api.role.getRole(guid))
+      console.log('[useRole] Got role GUIDs:', roleGuids)
+      
+      if (!Array.isArray(roleGuids) || roleGuids.length === 0) {
+        console.log('[useRole] No roles found')
+        roles.value = []
+        return
+      }
+      
+      const loadedRoles = await Promise.allSettled(
+        roleGuids.map(async (guid: string) => {
+          try {
+            console.log('[useRole] Loading role:', guid)
+            const role = await api.role.getRole(guid)
+            console.log('[useRole] Successfully loaded role:', guid, role)
+            return role
+          } catch (err) {
+            console.error(`[useRole] Failed to load role ${guid}:`, err)
+            throw err
+          }
+        })
       )
-      roles.value = loadedRoles
+      
+      // Filter out failed requests and log them
+      const successfulRoles = loadedRoles
+        .filter((result): result is PromiseFulfilledResult<RoleDto> => result.status === 'fulfilled')
+        .map(result => result.value)
+      
+      const failedRoles = loadedRoles.filter(result => result.status === 'rejected')
+      if (failedRoles.length > 0) {
+        console.warn(`[useRole] Failed to load ${failedRoles.length} out of ${roleGuids.length} roles`)
+        failedRoles.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`[useRole] Failed role GUID: ${roleGuids[index]}`, result.reason)
+          }
+        })
+      }
+      
+      console.log('[useRole] Successfully loaded', successfulRoles.length, 'roles:', successfulRoles)
+      
+      roles.value = successfulRoles
+      
+      // If some roles failed but we have at least some successful ones, don't throw error
+      // Only throw if ALL roles failed
+      if (successfulRoles.length === 0 && roleGuids.length > 0) {
+        throw new Error(`Failed to load any roles. ${failedRoles.length} role(s) failed.`)
+      }
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to load roles')
+      console.error('[useRole] Error loading roles:', err)
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : typeof err === 'object' && err !== null && 'message' in err
+        ? String(err.message)
+        : 'Failed to load roles'
+      error.value = new Error(errorMessage)
+      console.error('[useRole] Error details:', {
+        message: errorMessage,
+        error: err,
+        stack: err instanceof Error ? err.stack : undefined
+      })
       throw err
     } finally {
       loading.value = false

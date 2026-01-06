@@ -21,6 +21,7 @@ import { Priority as PriorityEnum, TaskStatus as TaskStatusEnum, Role as RoleEnu
 
 /**
  * Map backend Priority number to frontend Priority enum
+ * Backend: 0=ShortTerm, 1=MidTerm, 2=LongTerm
  */
 export function mapPriorityFromBackend(priority?: number): Priority {
   if (priority === undefined || priority === null) {
@@ -29,11 +30,11 @@ export function mapPriorityFromBackend(priority?: number): Priority {
   
   switch (priority) {
     case 0:
-      return PriorityEnum.IMMEDIATE
+      return PriorityEnum.SHORT_TERM // ShortTerm
     case 1:
-      return PriorityEnum.MEDIUM_TERM
+      return PriorityEnum.MID_TERM // MidTerm
     case 2:
-      return PriorityEnum.LONG_TERM
+      return PriorityEnum.LONG_TERM // LongTerm
     default:
       return PriorityEnum.LONG_TERM
   }
@@ -41,15 +42,16 @@ export function mapPriorityFromBackend(priority?: number): Priority {
 
 /**
  * Map frontend Priority enum to backend Priority number
+ * Backend: 0=ShortTerm, 1=MidTerm, 2=LongTerm
  */
 export function mapPriorityToBackend(priority: Priority): number {
   switch (priority) {
-    case PriorityEnum.IMMEDIATE:
-      return 0
-    case PriorityEnum.MEDIUM_TERM:
-      return 1
+    case PriorityEnum.SHORT_TERM:
+      return 0 // ShortTerm
+    case PriorityEnum.MID_TERM:
+      return 1 // MidTerm
     case PriorityEnum.LONG_TERM:
-      return 2
+      return 2 // LongTerm
     default:
       return 2
   }
@@ -57,21 +59,22 @@ export function mapPriorityToBackend(priority: Priority): number {
 
 /**
  * Map backend AssignmentStatus number to frontend TaskStatus enum
+ * Backend: 0=Planned, 1=InProgress, 2=Completed
  */
 export function mapStatusFromBackend(status?: number): TaskStatus {
   if (status === undefined || status === null) {
-    return TaskStatusEnum.PENDING
+    return TaskStatusEnum.PENDING // Default to PENDING (maps to Planned)
   }
   
   switch (status) {
     case 0:
-      return TaskStatusEnum.PENDING
+      return TaskStatusEnum.PENDING // Planned
     case 1:
-      return TaskStatusEnum.IN_PROGRESS
+      return TaskStatusEnum.IN_PROGRESS // InProgress
     case 2:
-      return TaskStatusEnum.COMPLETED
+      return TaskStatusEnum.COMPLETED // Completed
     case 3:
-      return TaskStatusEnum.BLOCKED
+      return TaskStatusEnum.BLOCKED // Blocked (not in diagram, but kept for compatibility)
     default:
       return TaskStatusEnum.PENDING
   }
@@ -79,17 +82,18 @@ export function mapStatusFromBackend(status?: number): TaskStatus {
 
 /**
  * Map frontend TaskStatus enum to backend AssignmentStatus number
+ * Backend: 0=Planned, 1=InProgress, 2=Completed
  */
 export function mapStatusToBackend(status: TaskStatus): number {
   switch (status) {
     case TaskStatusEnum.PENDING:
-      return 0
+      return 0 // Planned
     case TaskStatusEnum.IN_PROGRESS:
-      return 1
+      return 1 // InProgress
     case TaskStatusEnum.COMPLETED:
-      return 2
+      return 2 // Completed
     case TaskStatusEnum.BLOCKED:
-      return 3
+      return 0 // Blocked maps to Planned (or could be 3 if backend supports it)
     default:
       return 0
   }
@@ -109,18 +113,18 @@ export function mapAssignmentToWorkStep(
     title: assignment.displayName,
     description: assignment.description,
     duration: 8, // Default, should be calculated or provided
-    status: mapStatusFromBackend(assignment.assignmentStatus),
+    status: mapStatusFromBackend(assignment.status),
     priority: mapPriorityFromBackend(assignment.priority),
     workflowId,
     sequenceNumber,
     requiredRole,
-    assignedTo: assignment.actorGuid
-      ? Array.isArray(assignment.actorGuid)
-        ? assignment.actorGuid
-        : assignment.actorGuid
+    assignedTo: assignment.assigneeGuid
+      ? Array.isArray(assignment.assigneeGuid)
+        ? assignment.assigneeGuid
+        : assignment.assigneeGuid
       : undefined,
-    completedAt: assignment.assignmentStatus === 2 && assignment.deadlineDate
-      ? new Date(assignment.deadlineDate)
+    completedAt: assignment.status === 2 && assignment.endDate
+      ? new Date(assignment.endDate)
       : undefined,
     createdAt: assignment.startDate ? new Date(assignment.startDate) : new Date(),
     updatedAt: new Date(),
@@ -136,22 +140,38 @@ export function mapWorkStepToAssignment(workStep: WorkStep): Partial<AssignmentD
     displayName: workStep.title,
     description: workStep.description,
     deadlineDate: workStep.workflowId ? undefined : undefined, // Would need workflow deadline
-    actorGuid: workStep.assignedTo,
-    requiredRole: workStep.requiredRole,
+    assigneeGuid: workStep.assignedTo,
+    requiredRoleGuid: workStep.requiredRole,
     priority: mapPriorityToBackend(workStep.manualPriority || workStep.priority),
-    assignmentStatus: mapStatusToBackend(workStep.status),
+    status: mapStatusToBackend(workStep.status),
   }
 }
 
 /**
  * Map backend ActorDto to frontend User
+ * Admin status is determined by the actor's role's isAdmin flag
  */
 export function mapActorToUser(actor: ActorDto, role?: RoleDto): User {
+  const roleDto = role || actor.role
+  
+  // Check if actor's role has isAdmin flag set to true
+  const isAdmin = roleDto?.isAdmin === true
+  
+  // Determine user role based on actor's role
+  let userRole: Role
+  if (isAdmin) {
+    userRole = RoleEnum.ADMIN
+  } else if (roleDto?.displayName?.toLowerCase().includes('manager')) {
+    userRole = RoleEnum.WORKFLOW_MANAGER
+  } else {
+    userRole = RoleEnum.TEAM_MEMBER
+  }
+  
   return {
     id: actor.guid,
-    username: actor.nickname,
-    email: `${actor.nickname}@example.com`, // Default, should come from backend
-    role: role?.isAdmin ? RoleEnum.ADMIN : RoleEnum.TEAM_MEMBER, // Map based on role
+    username: actor.displayName,
+    email: `${actor.displayName}@example.com`, // Default, should come from backend
+    role: userRole,
     tenantId: undefined, // Should come from backend
   }
 }
@@ -169,6 +189,8 @@ export function mapRoleDtoToRole(roleDto: RoleDto): Role {
   }
   return RoleEnum.TEAM_MEMBER
 }
+
+
 
 
 

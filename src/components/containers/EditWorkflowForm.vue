@@ -35,13 +35,18 @@
 
       <div class="form-group">
         <label for="workflow-deadline" class="form-label">Deadline *</label>
-        <input
-          id="workflow-deadline"
-          v-model="formData.deadline"
-          type="datetime-local"
-          class="form-input"
-          required
-        />
+        <div class="date-input-wrapper">
+          <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <input
+            id="workflow-deadline"
+            v-model="formData.deadline"
+            type="datetime-local"
+            class="form-input date-input"
+            required
+          />
+        </div>
       </div>
 
       <div v-if="error" class="form-error">
@@ -267,7 +272,65 @@ async function handleSubmit() {
 .btn--secondary:hover {
   background: var(--color-surface-hover);
 }
+
+/* Enhanced Date Picker Styles */
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  z-index: 1;
+  transition: color var(--transition-base);
+}
+
+.date-input {
+  padding-left: calc(var(--spacing-md) + 28px);
+  position: relative;
+  cursor: pointer;
+}
+
+.date-input:hover {
+  border-color: var(--color-primary-light);
+}
+
+.date-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.date-input:focus + .date-icon,
+.date-input-wrapper:focus-within .date-icon {
+  color: var(--color-primary);
+}
+
+/* Custom styling for datetime-local input */
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  position: absolute;
+  right: var(--spacing-md);
+  width: 20px;
+  height: 20px;
+  z-index: 2;
+  filter: brightness(0) saturate(100%) invert(58%) sepia(7%) saturate(1000%) hue-rotate(182deg) brightness(92%) contrast(88%);
+  transition: filter var(--transition-base);
+}
+
+.date-input:hover::-webkit-calendar-picker-indicator,
+.date-input:focus::-webkit-calendar-picker-indicator {
+  filter: brightness(0) saturate(100%) invert(37%) sepia(96%) saturate(7498%) hue-rotate(212deg) brightness(98%) contrast(96%);
+}
 </style>
+
+
 
 
 

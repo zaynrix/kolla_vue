@@ -33,6 +33,17 @@ export const useUserStore = defineStore('user', () => {
   // Actions
   function setCurrentUser(user: User | null) {
     currentUser.value = user
+    // Save to localStorage for persistence across page reloads
+    if (user) {
+      // Store actorGuid for restoration
+      const actorGuid = user.id // user.id is the actor guid
+      localStorage.setItem('currentUser', JSON.stringify({ 
+        actorGuid,
+        displayName: user.username 
+      }))
+    } else {
+      localStorage.removeItem('currentUser')
+    }
   }
 
   function setUsers(newUsers: User[]) {
@@ -63,7 +74,26 @@ export const useUserStore = defineStore('user', () => {
 
   function logout() {
     currentUser.value = null
+    localStorage.removeItem('currentUser')
   }
+
+  // Initialize: restore user from localStorage
+  function initialize() {
+    try {
+      const saved = localStorage.getItem('currentUser')
+      if (saved) {
+        const { actorGuid, displayName } = JSON.parse(saved)
+        // User will be restored by the app on mount
+        // This just marks that we should restore
+      }
+    } catch (err) {
+      console.error('Failed to restore user from localStorage:', err)
+      localStorage.removeItem('currentUser')
+    }
+  }
+
+  // Call initialize on store creation
+  initialize()
 
   return {
     // State

@@ -39,8 +39,8 @@ export const useWorkStepStore = defineStore('workStep', () => {
       const bPriority = b.manualPriority || calculatePriority(b, now)
 
       const priorityOrder = {
-        [PriorityEnum.IMMEDIATE]: 0,
-        [PriorityEnum.MEDIUM_TERM]: 1,
+        [PriorityEnum.SHORT_TERM]: 0,
+        [PriorityEnum.MID_TERM]: 1,
         [PriorityEnum.LONG_TERM]: 2,
       }
 
@@ -80,11 +80,11 @@ export const useWorkStepStore = defineStore('workStep', () => {
     const effectiveHoursUntilDeadline = hoursUntilDeadline - totalRemainingDuration
 
     if (effectiveHoursUntilDeadline <= 8) {
-      return PriorityEnum.IMMEDIATE
+      return PriorityEnum.SHORT_TERM // ShortTerm
     } else if (effectiveHoursUntilDeadline <= 32) {
-      return PriorityEnum.MEDIUM_TERM
+      return PriorityEnum.MID_TERM // MidTerm
     } else {
-      return PriorityEnum.LONG_TERM
+      return PriorityEnum.LONG_TERM // LongTerm
     }
   }
 

@@ -4,13 +4,13 @@
 -->
 <template>
   <div class="edit-actor-form">
-    <h3>Edit Actor</h3>
+    <h3>Edit User</h3>
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
-        <label for="edit-actor-nickname" class="form-label">Nickname *</label>
+        <label for="edit-actor-displayName" class="form-label">Display Name *</label>
         <input
-          id="edit-actor-nickname"
-          v-model="formData.nickname"
+          id="edit-actor-displayName"
+          v-model="formData.displayName"
           type="text"
           class="form-input"
           required
@@ -65,12 +65,12 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const { updateActorNickname, updateActorRole, loading } = useActor()
+const { updateActorDisplayName, updateActorRole, loading } = useActor()
 const { roles, loadRoles } = useRole()
 
 const formData = ref({
-  nickname: props.actor.nickname,
-  roleGuid: props.actor.roleGuid || '',
+  displayName: props.actor.displayName,
+  roleGuid: props.actor.role?.guid || '',
 })
 
 const error = ref<string | null>(null)
@@ -83,8 +83,8 @@ watch(
   () => props.actor,
   (newActor) => {
     formData.value = {
-      nickname: newActor.nickname,
-      roleGuid: newActor.roleGuid || '',
+      displayName: newActor.displayName,
+      roleGuid: newActor.role?.guid || '',
     }
   },
   { immediate: true }
@@ -93,17 +93,25 @@ watch(
 async function handleSubmit() {
   error.value = null
   try {
-    // Update each field separately (as per backend API design)
-    if (formData.value.nickname !== props.actor.nickname) {
-      await updateActorNickname(props.actor.guid, formData.value.nickname)
+    // Validate display name
+    if (!formData.value.displayName || formData.value.displayName.trim() === '') {
+      error.value = 'Display Name is required'
+      return
     }
-    const newRoleGuid = formData.value.roleGuid || undefined
-    if (newRoleGuid !== props.actor.roleGuid) {
+
+    // Update each field separately (as per backend API design)
+    if (formData.value.displayName.trim() !== props.actor.displayName) {
+      await updateActorDisplayName(props.actor.guid, formData.value.displayName.trim())
+    }
+    const newRoleGuid = formData.value.roleGuid && formData.value.roleGuid !== '' ? formData.value.roleGuid : undefined
+    const currentRoleGuid = props.actor.role?.guid
+    if (newRoleGuid !== currentRoleGuid) {
       await updateActorRole(props.actor.guid, newRoleGuid)
     }
     emit('updated')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to update actor'
+    console.error('Error updating actor:', err)
   }
 }
 </script>
@@ -165,6 +173,8 @@ async function handleSubmit() {
   margin-top: var(--spacing-xl);
 }
 </style>
+
+
 
 
 

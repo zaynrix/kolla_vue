@@ -1,28 +1,38 @@
 /**
  * Modern Design System for Kolla
  * Professional, modern design with excellent UX
+ * Supports Light & Dark themes with gradient colors
  */
 
-:root {
-  /* Color Palette - Modern & Professional */
-  --color-primary: #2563eb;
-  --color-primary-dark: #1e40af;
-  --color-primary-light: #3b82f6;
-  --color-secondary: #10b981;
-  --color-accent: #f59e0b;
+:root,
+[data-theme="light"] {
+  /* Color Palette - Professional Corporate Theme */
+  --color-primary: #1e3a8a; /* Deep professional blue */
+  --color-primary-dark: #1e2a5e; /* Darker blue for depth */
+  --color-primary-light: #2563eb; /* Lighter blue for accents */
+  --color-primary-gradient: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #1e2a5e 100%);
+  --color-primary-gradient-hover: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #1e3a8a 100%);
   
-  /* Neutral Colors */
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-light: #f1f5f9;
+  --color-secondary: #0f766e; /* Professional teal */
+  --color-secondary-gradient: linear-gradient(135deg, #14b8a6 0%, #0f766e 50%, #0d9488 100%);
   
-  /* Text Colors */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #94a3b8;
-  --color-text-inverse: #ffffff;
+  --color-accent: #c2410c; /* Professional orange accent */
+  --color-accent-gradient: linear-gradient(135deg, #ea580c 0%, #c2410c 50%, #9a3412 100%);
+  
+  /* Neutral Colors - Professional White & Grays */
+  --color-background: #ffffff; /* Pure white for professional look */
+  --color-background-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+  --color-surface: #ffffff; /* Clean white surfaces */
+  --color-surface-hover: #f8fafc; /* Subtle hover state */
+  --color-surface-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --color-border: #cbd5e1; /* Professional gray borders */
+  --color-border-light: #e2e8f0; /* Light gray borders */
+  
+  /* Text Colors - High Contrast for Professional Readability */
+  --color-text-primary: #1e293b; /* Dark slate for excellent readability */
+  --color-text-secondary: #475569; /* Medium gray for secondary text */
+  --color-text-tertiary: #64748b; /* Light gray for tertiary text */
+  --color-text-inverse: #ffffff; /* White text on dark backgrounds */
   
   /* Status Colors */
   --color-success: #10b981;
@@ -114,6 +124,114 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
+  
+  /* Gradient Backgrounds */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-warm: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --gradient-cool: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+  --gradient-sunset: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  --gradient-ocean: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-forest: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  
+  /* Header Gradient - Professional */
+  --header-gradient: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #1e2a5e 100%);
+  --header-gradient-animated: linear-gradient(135deg, #1e40af 0%, #1e3a8a 25%, #1e2a5e 50%, #1e3a8a 75%, #1e40af 100%);
+  
+  /* Backward compatibility: Map old variable names to new design system variables */
+  --color-background: var(--color-surface);
+  --color-background-soft: var(--color-surface-hover);
+  --color-background-mute: var(--color-border-light);
+  --color-text: var(--color-text-primary);
+  --color-heading: var(--color-text-primary);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  /* Color Palette - Dark Mode with Gradients */
+  --color-primary: #60a5fa;
+  --color-primary-dark: #3b82f6;
+  --color-primary-light: #93c5fd;
+  --color-primary-gradient: linear-gradient(135deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%);
+  --color-primary-gradient-hover: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 50%, #60a5fa 100%);
+  
+  --color-secondary: #34d399;
+  --color-secondary-gradient: linear-gradient(135deg, #6ee7b7 0%, #34d399 50%, #10b981 100%);
+  
+  --color-accent: #fbbf24;
+  --color-accent-gradient: linear-gradient(135deg, #fcd34d 0%, #fbbf24 50%, #f59e0b 100%);
+  
+  /* Neutral Colors - Dark */
+  --color-background: #0f172a;
+  --color-background-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%);
+  --color-surface: #1e293b;
+  --color-surface-hover: #334155;
+  --color-surface-gradient: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  --color-border: #334155;
+  --color-border-light: #475569;
+  
+  /* Text Colors - Dark */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #0f172a;
+  
+  /* Status Colors - Dark */
+  --color-success: #34d399;
+  --color-success-light: #064e3b;
+  --color-warning: #fbbf24;
+  --color-warning-light: #78350f;
+  --color-error: #f87171;
+  --color-error-light: #7f1d1d;
+  --color-info: #60a5fa;
+  --color-info-light: #1e3a8a;
+  
+  /* Priority Colors - Dark */
+  --color-priority-immediate: #f87171;
+  --color-priority-immediate-light: #7f1d1d;
+  --color-priority-medium: #fbbf24;
+  --color-priority-medium-light: #78350f;
+  --color-priority-long: #60a5fa;
+  --color-priority-long-light: #1e3a8a;
+  
+  /* Status Colors - Dark */
+  --color-status-pending: #fbbf24;
+  --color-status-pending-light: #78350f;
+  --color-status-in-progress: #60a5fa;
+  --color-status-in-progress-light: #1e3a8a;
+  --color-status-completed: #34d399;
+  --color-status-completed-light: #064e3b;
+  --color-status-blocked: #f87171;
+  --color-status-blocked-light: #7f1d1d;
+  
+  /* Gradient Backgrounds - Dark */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-warm: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --gradient-cool: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+  --gradient-sunset: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  --gradient-ocean: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-forest: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  
+  /* Header Gradient - Dark */
+  --header-gradient: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  --header-gradient-animated: linear-gradient(135deg, #1e293b 0%, #334155 25%, #475569 50%, #64748b 75%, #1e293b 100%);
+  
+  /* Shadows - Dark Mode */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  
+  /* Backward compatibility: Map old variable names to new design system variables */
+  --color-background: var(--color-surface);
+  --color-background-soft: var(--color-surface-hover);
+  --color-background-mute: var(--color-border-light);
+  --color-text: var(--color-text-primary);
+  --color-heading: var(--color-text-primary);
 }
 
 /* Base Styles */
@@ -124,10 +242,13 @@
 body {
   font-family: var(--font-family);
   color: var(--color-text-primary);
-  background-color: var(--color-background);
+  background: var(--color-background-gradient);
+  background-attachment: fixed;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: var(--leading-normal);
+  transition: background var(--transition-slow);
 }
 
 /* Modern Button Styles */
@@ -160,15 +281,37 @@ body {
 }
 
 .btn--primary {
-  background-color: var(--color-primary);
+  background: var(--color-primary-gradient);
   color: var(--color-text-inverse);
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn--primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-primary-gradient-hover);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.btn--primary:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+.btn--primary > * {
+  position: relative;
+  z-index: 1;
 }
 
 .btn--secondary {
@@ -311,6 +454,24 @@ body {
 .rounded-xl { border-radius: var(--radius-xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
+/* Gradient Utility Classes */
+.gradient-primary { background: var(--gradient-primary); }
+.gradient-secondary { background: var(--gradient-secondary); }
+.gradient-success { background: var(--gradient-success); }
+.gradient-warm { background: var(--gradient-warm); }
+.gradient-cool { background: var(--gradient-cool); }
+.gradient-sunset { background: var(--gradient-sunset); }
+.gradient-ocean { background: var(--gradient-ocean); }
+.gradient-forest { background: var(--gradient-forest); }
+
+/* Text Gradient */
+.text-gradient {
+  background: var(--color-primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {
@@ -365,6 +526,8 @@ html {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+
 
 
 

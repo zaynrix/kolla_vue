@@ -63,19 +63,59 @@
         </div>
       </div>
 
+      <div class="form-row">
+        <div class="form-group">
+          <label for="step-start-date" class="form-label">Start Date</label>
+          <div class="date-input-wrapper">
+            <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <input
+              id="step-start-date"
+              v-model="formData.startDate"
+              type="datetime-local"
+              class="form-input date-input"
+              :min="minStartDate"
+            />
+          </div>
+          <small class="form-hint">Optional - cannot be in the past</small>
+        </div>
+
+        <div class="form-group">
+          <label for="step-deadline-date" class="form-label">Deadline Date</label>
+          <div class="date-input-wrapper">
+            <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <input
+              id="step-deadline-date"
+              v-model="formData.deadlineDate"
+              type="datetime-local"
+              class="form-input date-input"
+              :min="minDeadlineDate"
+            />
+          </div>
+          <small class="form-hint">Optional - must be after start date</small>
+        </div>
+      </div>
+
       <div class="form-group">
-        <label for="step-role" class="form-label">Required Role *</label>
+        <label for="step-role" class="form-label">Required Role</label>
         <select
           id="step-role"
-          v-model="formData.requiredRole"
+          v-model="selectedRoleGuid"
           class="form-select"
-          required
         >
-          <option value="">Select Role</option>
-          <option value="TEAM_MEMBER">Team Member</option>
-          <option value="WORKFLOW_MANAGER">Workflow Manager</option>
-          <option value="ADMIN">Admin</option>
+          <option :value="null">No Role Required</option>
+          <option
+            v-for="role in roles"
+            :key="role.guid"
+            :value="role.guid"
+          >
+            {{ role.displayName }}{{ role.isAdmin ? ' (Admin)' : '' }}
+          </option>
         </select>
+        <small class="form-hint">Optional - Select a role that is required for this assignment</small>
       </div>
 
       <div class="form-group">
@@ -121,11 +161,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
-import { mockUsers } from '@/services/mock/mockData'
+import { useActor } from '@/composables/useActor'
+import { useRole } from '@/composables/useRole'
 import type { CreateWorkStepRequest } from '@/types/api'
 import { Role } from '@/types/domain'
+import type { ActorDto } from '@/types/api'
 
 interface Props {
   showForm?: boolean
@@ -142,6 +184,8 @@ const emit = defineEmits<{
 }>()
 
 const { createWorkStep, loading } = useWorkStep()
+const { actors, loadActors } = useActor()
+const { roles, loadRoles } = useRole()
 
 const formData = ref<CreateWorkStepRequest>({
   title: '',
@@ -151,24 +195,101 @@ const formData = ref<CreateWorkStepRequest>({
   sequenceNumber: 1,
   requiredRole: Role.TEAM_MEMBER,
   assignedTo: undefined,
+  startDate: undefined,
+  deadlineDate: undefined,
 })
 
 const selectedAssignees = ref<string[]>([])
+const selectedRoleGuid = ref<string | null>(null)
 const error = ref<string | null>(null)
 
-// Filter users by required role
-const availableUsers = computed(() => {
-  return mockUsers.filter((user) => user.role === formData.value.requiredRole)
+// Computed properties for date minimums
+const minStartDate = computed(() => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 })
 
-// Watch for role changes and update available users
-watch(() => formData.value.requiredRole, () => {
-  selectedAssignees.value = [] // Clear selections when role changes
+const minDeadlineDate = computed(() => {
+  if (formData.value.startDate) {
+    return formData.value.startDate
+  }
+  return minStartDate.value
+})
+
+// Filter actors by selected role GUID
+const availableUsers = computed(() => {
+  // If no role is selected, show all actors
+  if (!selectedRoleGuid.value) {
+    return actors.value.map((actor) => ({
+      id: actor.guid,
+      username: actor.displayName,
+      email: `${actor.displayName}@example.com`,
+      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
+      tenantId: undefined,
+    }))
+  }
+  
+  // Filter actors that have the selected role
+  return actors.value
+    .filter((actor) => {
+      if (!actor.role) return false
+      // Check if actor's role GUID matches the selected role GUID
+      return actor.role.guid === selectedRoleGuid.value
+    })
+    .map((actor) => ({
+      id: actor.guid,
+      username: actor.displayName,
+      email: `${actor.displayName}@example.com`,
+      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
+      tenantId: undefined,
+    }))
+})
+
+onMounted(async () => {
+  await Promise.all([loadActors(), loadRoles()])
+})
+
+// Watch for role GUID changes and update available users
+watch(() => selectedRoleGuid.value, () => {
+  // Clear assignee selections when role changes (they might not have the new role)
+  selectedAssignees.value = []
 })
 
 async function handleSubmit() {
   error.value = null
   try {
+    // Validate dates
+    if (formData.value.startDate) {
+      const startDate = new Date(formData.value.startDate)
+      const now = new Date()
+      if (startDate < now) {
+        error.value = 'Start date cannot be in the past'
+        return
+      }
+    }
+
+    if (formData.value.deadlineDate) {
+      const deadlineDate = new Date(formData.value.deadlineDate)
+      const now = new Date()
+      if (deadlineDate < now) {
+        error.value = 'Deadline date cannot be in the past'
+        return
+      }
+
+      if (formData.value.startDate) {
+        const startDate = new Date(formData.value.startDate)
+        if (deadlineDate <= startDate) {
+          error.value = 'Deadline date must be after start date'
+          return
+        }
+      }
+    }
+
     // Convert selected assignees to array (or single string if only one, or undefined if none)
     let assignedTo: string | string[] | undefined
     if (selectedAssignees.value.length === 0) {
@@ -179,9 +300,25 @@ async function handleSubmit() {
       assignedTo = [...selectedAssignees.value]
     }
 
+    // Format dates to ISO string for API
+    const formatDateForAPI = (dateString: string | undefined): string | null => {
+      if (!dateString) return null
+      return new Date(dateString).toISOString()
+    }
+
+    // Create work step request with only the necessary fields
+    // Don't spread formData.value to avoid including unwanted properties
     const workStep = await createWorkStep({
-      ...formData.value,
-      assignedTo,
+      title: formData.value.title,
+      description: formData.value.description,
+      duration: formData.value.duration,
+      workflowId: formData.value.workflowId,
+      sequenceNumber: formData.value.sequenceNumber,
+      requiredRole: formData.value.requiredRole, // Keep for backward compatibility
+      requiredRoleGuid: selectedRoleGuid.value, // Use selected role GUID
+      assignedTo: assignedTo, // Use the processed assignedTo value
+      startDate: formatDateForAPI(formData.value.startDate),
+      deadlineDate: formatDateForAPI(formData.value.deadlineDate),
     })
 
     // Reset form
@@ -192,9 +329,13 @@ async function handleSubmit() {
       workflowId: props.workflowId,
       sequenceNumber: formData.value.sequenceNumber + 1, // Increment for next step
       requiredRole: Role.TEAM_MEMBER,
+      requiredRoleGuid: undefined,
       assignedTo: undefined,
+      startDate: undefined,
+      deadlineDate: undefined,
     }
     selectedAssignees.value = []
+    selectedRoleGuid.value = null
 
     emit('created', workStep.id)
   } catch (err) {
@@ -403,6 +544,68 @@ async function handleSubmit() {
 
 .btn--secondary:hover {
   background: var(--color-surface-hover);
+}
+
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+/* Enhanced Date Picker Styles */
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-icon {
+  position: absolute;
+  left: var(--spacing-md);
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  z-index: 1;
+  transition: color var(--transition-base);
+}
+
+.date-input {
+  padding-left: calc(var(--spacing-md) + 28px);
+  position: relative;
+  cursor: pointer;
+}
+
+.date-input:hover {
+  border-color: var(--color-primary-light);
+}
+
+.date-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.date-input:focus + .date-icon,
+.date-input-wrapper:focus-within .date-icon {
+  color: var(--color-primary);
+}
+
+/* Custom styling for datetime-local input */
+.date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  position: absolute;
+  right: var(--spacing-md);
+  width: 20px;
+  height: 20px;
+  z-index: 2;
+  filter: brightness(0) saturate(100%) invert(58%) sepia(7%) saturate(1000%) hue-rotate(182deg) brightness(92%) contrast(88%);
+  transition: filter var(--transition-base);
+}
+
+.date-input:hover::-webkit-calendar-picker-indicator,
+.date-input:focus::-webkit-calendar-picker-indicator {
+  filter: brightness(0) saturate(100%) invert(37%) sepia(96%) saturate(7498%) hue-rotate(212deg) brightness(98%) contrast(96%);
 }
 </style>
 

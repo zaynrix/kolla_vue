@@ -23,9 +23,9 @@
 
     <div class="workflow-card__actions">
       <slot name="actions" :workflow="workflow">
-        <button @click="$emit('view', workflow.id)">View</button>
-        <button @click="$emit('edit', workflow.id)">Edit</button>
-        <button @click="$emit('delete', workflow.id)">Delete</button>
+        <button @click="$emit('view', workflow.id)" class="action-btn action-btn--view">View</button>
+        <button @click="$emit('edit', workflow.id)" class="action-btn action-btn--edit">Edit</button>
+        <button @click="$emit('delete', workflow.id)" class="action-btn action-btn--delete">Delete</button>
       </slot>
     </div>
   </div>
@@ -109,17 +109,50 @@ const formattedCreatedAt = computed(() => {
   margin-top: 1rem;
 }
 
-.workflow-card__actions button {
+.action-btn {
   padding: 0.5rem 1rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.workflow-card__actions button:hover {
-  background: #f5f5f5;
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn--view {
+  color: #2563eb;
+  border-color: #2563eb;
+}
+
+.action-btn--view:hover {
+  background: #2563eb;
+  color: white;
+}
+
+.action-btn--edit {
+  color: #16a34a;
+  border-color: #16a34a;
+}
+
+.action-btn--edit:hover {
+  background: #16a34a;
+  color: white;
+}
+
+.action-btn--delete {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.action-btn--delete:hover {
+  background: #dc3545;
+  color: white;
 }
 </style>
 

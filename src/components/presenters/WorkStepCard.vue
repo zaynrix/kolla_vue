@@ -55,7 +55,7 @@
         >
           Complete
         </button>
-        <button @click="$emit('view', workStep.id)">View</button>
+        <button @click="$emit('view', workStep.id)" class="btn btn--secondary">View</button>
       </slot>
     </div>
   </div>
@@ -247,32 +247,70 @@ const assignedUsersText = computed(() => {
 
 .workstep-card__actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 .btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.875rem;
+  transition: all var(--transition-base);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
 }
 
 .btn:hover {
-  background: #f5f5f5;
+  background: var(--color-surface-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--text-xs);
+  min-height: 28px;
 }
 
 .btn--primary {
-  background: #2196f3;
-  color: white;
-  border-color: #2196f3;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
 }
 
 .btn--primary:hover {
-  background: #1976d2;
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.btn--secondary:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary-light);
+}
+
+.btn--danger {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.btn--danger:hover {
+  background: #c82333;
+  border-color: #bd2130;
 }
 </style>
 

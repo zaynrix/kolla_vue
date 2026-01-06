@@ -10,21 +10,15 @@ import { WorkStepApiService } from './workStepApi'
 import { RoleApiService } from './roleApi'
 import { ActorApiService } from './actorApi'
 import { AssignmentApiService } from './assignmentApi'
-import { MockApiClient } from './mockApiClient'
-import { MockWorkflowApiService } from './mockWorkflowApi'
-import { MockWorkStepApiService } from './mockWorkStepApi'
-import { MockRoleApiService } from './mockRoleApi'
-import { MockActorApiService } from './mockActorApi'
-import { MockAssignmentApiService } from './mockAssignmentApi'
 import type { ApiConfig } from './types'
 
 export interface ApiServices {
-  workflow: WorkflowApiService | MockWorkflowApiService
+  workflow: WorkflowApiService
   objective: ObjectiveApiService
-  workStep: WorkStepApiService | MockWorkStepApiService
-  role: RoleApiService | MockRoleApiService
-  actor: ActorApiService | MockActorApiService
-  assignment: AssignmentApiService | MockAssignmentApiService
+  workStep: WorkStepApiService
+  role: RoleApiService
+  actor: ActorApiService
+  assignment: AssignmentApiService
 }
 
 export function createApiServices(config: ApiConfig): ApiServices {
@@ -39,27 +33,19 @@ export function createApiServices(config: ApiConfig): ApiServices {
   }
 }
 
-export function createMockApiServices(): ApiServices {
-  const mockClient = new MockApiClient()
-  return {
-    workflow: new MockWorkflowApiService(mockClient),
-    objective: new ObjectiveApiService(new ApiClient({ baseURL: '' })), // Not used in prototype
-    workStep: new MockWorkStepApiService(mockClient),
-    role: new MockRoleApiService(),
-    actor: new MockActorApiService(),
-    assignment: new MockAssignmentApiService(),
-  }
-}
-
-// Use mock services for prototyping
-// Set VITE_USE_MOCK_API=false to use real API
-const useMockApi = import.meta.env.VITE_USE_MOCK_API !== 'false'
-
 // Default instance (can be overridden via dependency injection)
-export const defaultApiServices: ApiServices = useMockApi
-  ? createMockApiServices()
-  : createApiServices({
-      baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
-      timeout: 30000,
-    })
+// In development, ALWAYS use /api which will be proxied by Vite to avoid CORS issues
+// In production, use VITE_API_BASE_URL or fallback to Heroku URL
+const apiBaseURL = import.meta.env.DEV 
+  ? '/api'  // Always use proxy in development to avoid CORS
+  : (import.meta.env.VITE_API_BASE_URL || 'https://kolla-cdb6b0d315ac.herokuapp.com')
+console.log('[API Services] Initializing with baseURL:', apiBaseURL)
+console.log('[API Services] VITE_API_BASE_URL env var:', import.meta.env.VITE_API_BASE_URL)
+console.log('[API Services] Development mode:', import.meta.env.DEV)
+console.log('[API Services] Using proxy:', import.meta.env.DEV ? 'YES (/api -> Heroku)' : 'NO (direct)')
+
+export const defaultApiServices: ApiServices = createApiServices({
+  baseURL: apiBaseURL,
+  timeout: 30000,
+})
 

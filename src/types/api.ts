@@ -28,8 +28,11 @@ export interface CreateWorkStepRequest {
   duration: number
   workflowId: string
   sequenceNumber: number
-  requiredRole: Role
+  requiredRole: Role // Keep for backward compatibility
+  requiredRoleGuid?: string | null // Role GUID for Assignment API
   assignedTo?: string | string[] // Support single or multiple user assignments
+  startDate?: string | null // ISO date string
+  deadlineDate?: string | null // ISO date string
 }
 
 export interface UpdateWorkStepRequest {
@@ -79,21 +82,22 @@ export interface UpdateRoleAdminFlagRequest {
 // Actor API Types
 export interface ActorDto {
   guid: string
-  nickname: string
-  roleGuid?: string
+  displayName: string
+  role?: RoleDto
 }
 
 export interface CreateActorRequest {
-  nickname: string
-  roleGuid?: string
+  DisplayName: string
+  RoleGuid?: string
 }
 
-export interface UpdateActorNicknameRequest {
-  nickname: string
+export interface UpdateActorDisplayNameRequest {
+  DisplayName: string
 }
 
 export interface UpdateActorRoleRequest {
-  roleGuid?: string
+  Guid: string
+  RoleGuid?: string | null
 }
 
 // Objective API Types (Backend uses "Objective" terminology)
@@ -117,25 +121,29 @@ export interface UpdateObjectiveDescriptionRequest {
 }
 
 // Assignment API Types (Backend uses "Assignment" for Work Steps)
+// Matches the data model: Assignment has relationships to Objective, Actor, and Role
 export interface AssignmentDto {
   guid: string
   displayName: string
-  description?: string
-  startDate?: string // ISO date string
-  deadlineDate?: string // ISO date string
-  actorGuid?: string | string[] // Can be single or multiple
-  requiredRole?: string
-  priority?: number // 0=IMMEDIATE, 1=MEDIUM_TERM, 2=LONG_TERM
-  assignmentStatus?: number // 0=PENDING, 1=IN_PROGRESS, 2=COMPLETED, 3=BLOCKED
+  description?: string | null
+  startDate?: string | null // ISO date string (DateTime?)
+  endDate?: string | null // ISO date string (DateTime?) - automatically set when status=Completed
+  deadlineDate?: string | null // ISO date string (DateTime?)
+  assigneeGuid?: string | null // GUID of Actor assigned to this assignment (1 Actor -> many Assignments)
+  requiredRoleGuid?: string | null // GUID of Role required for this assignment (1 Assignment -> 1 Role)
+  priority: number // 0=ShortTerm, 1=MidTerm, 2=LongTerm (enum Priority)
+  status: number // 0=Planned, 1=InProgress, 2=Completed (enum AssignmentStatus)
+  parentObjectiveGuid?: string | null // GUID of parent Objective (1 Objective -> many Assignments)
 }
 
 export interface CreateAssignmentRequest {
-  displayName: string
-  description?: string
-  startDate?: string // ISO date string
-  deadlineDate?: string // ISO date string
-  actorGuid?: string | string[] // Can be single or multiple
-  requiredRole?: string
+  DisplayName: string
+  Description?: string | null
+  StartDate?: string | null // ISO date string (format: "yyyy-MM-ddTHH:mm:ssZ")
+  DeadlineDate?: string | null // ISO date string (format: "yyyy-MM-ddTHH:mm:ssZ")
+  AssigneeGuid?: string | null
+  RequiredRoleGuid?: string | null // Role GUID (not RequiredRole)
+  ParentObjectiveGuid?: string | null
 }
 
 export interface UpdateAssignmentDisplayNameRequest {
@@ -147,23 +155,38 @@ export interface UpdateAssignmentDescriptionRequest {
 }
 
 export interface UpdateAssignmentStartDateRequest {
-  startDate?: string // ISO date string
+  guid: string
+  StartDate?: string | null // ISO date string
 }
 
 export interface UpdateAssignmentDeadlineDateRequest {
-  deadlineDate?: string // ISO date string
+  guid: string
+  DeadlineDate?: string | null // ISO date string
 }
 
 export interface UpdateAssignmentAssigneeRequest {
-  assigneeGuid?: string | string[] // Can be single or multiple
+  guid: string
+  AssigneeGuid?: string | null
+}
+
+export interface UpdateAssignmentRequiredRoleRequest {
+  guid: string
+  RequiredRoleGuid?: string | null
 }
 
 export interface UpdateAssignmentPriorityRequest {
-  priority?: number // 0=IMMEDIATE, 1=MEDIUM_TERM, 2=LONG_TERM
+  guid: string
+  priority: number // 0=ShortTerm, 1=MidTerm, 2=LongTerm
 }
 
 export interface UpdateAssignmentStatusRequest {
-  assignmentStatus?: number // 0=PENDING, 1=IN_PROGRESS, 2=COMPLETED, 3=BLOCKED
+  guid: string
+  assignmentStatus: number // 0=Planned, 1=InProgress, 2=Completed
+}
+
+export interface UpdateAssignmentParentObjectiveRequest {
+  guid: string
+  ParentObjectiveGuid?: string | null
 }
 
 export interface ApiResponse<T> {

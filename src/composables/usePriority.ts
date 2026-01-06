@@ -25,19 +25,19 @@ export function usePriority(objective: ComputedRef<Objective | null>) {
       (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
 
     if (hoursUntilDeadline <= 8) {
-      return Priority.IMMEDIATE
+      return Priority.SHORT_TERM // ShortTerm
     } else if (hoursUntilDeadline <= 32) {
-      return Priority.MEDIUM_TERM
+      return Priority.MID_TERM // MidTerm
     } else {
-      return Priority.LONG_TERM
+      return Priority.LONG_TERM // LongTerm
     }
   })
 
   /**
-   * Check if objective is urgent (immediate priority)
+   * Check if objective is urgent (short-term priority)
    */
   const isUrgent = computed(() => {
-    return calculatedPriority.value === Priority.IMMEDIATE
+    return calculatedPriority.value === Priority.SHORT_TERM
   })
 
   /**

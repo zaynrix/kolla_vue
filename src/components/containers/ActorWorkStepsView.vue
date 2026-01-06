@@ -6,7 +6,7 @@
 <template>
   <div class="actor-worksteps-view">
     <div class="view-header">
-      <h3>{{ actor?.username }}'s Work Steps</h3>
+      <h3>{{ actor?.displayName || 'User' }}'s Work Steps</h3>
       <span class="view-badge">{{ workSteps.length }} steps</span>
     </div>
 
@@ -39,15 +39,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
 import { useWorkflowManager } from '@/composables/useWorkflowManager'
 import { useAuthorization } from '@/composables/useAuthorization'
 import { useWorkflow } from '@/composables/useWorkflow'
+import { useActor } from '@/composables/useActor'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
 import type { WorkStep, Priority, User } from '@/types/domain'
 import { Priority as PriorityEnum } from '@/types/domain'
-import { mockUsers } from '@/services/mock/mockData'
+import type { ActorDto } from '@/types/api'
 
 interface Props {
   actorId: string
@@ -60,16 +61,26 @@ const { workSteps, loadWorkSteps } = useWorkStep()
 const { workflows } = useWorkflow()
 const { setManualPriority } = useWorkflowManager()
 const { canManageWorkflow } = useAuthorization()
+const { actors, loadActors, getActor } = useActor()
 
-const actor = computed(() => mockUsers.find((u) => u.id === props.actorId))
+const actor = ref<ActorDto | null>(null)
 
 // Create map of user IDs to usernames for display
 const assignedUsersMap = computed(() => {
   const map = new Map<string, string>()
-  mockUsers.forEach((user) => {
-    map.set(user.id, user.username)
+  actors.value.forEach((a) => {
+    map.set(a.guid, a.displayName)
   })
   return map
+})
+
+onMounted(async () => {
+  await loadActors()
+  try {
+    actor.value = await getActor(props.actorId)
+  } catch (err) {
+    console.error('Failed to load actor:', err)
+  }
 })
 
 const filteredWorkSteps = computed(() => {

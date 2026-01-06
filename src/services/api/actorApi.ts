@@ -7,57 +7,58 @@ import type { ApiClient } from './client'
 import type {
   ActorDto,
   CreateActorRequest,
-  UpdateActorNicknameRequest,
   UpdateActorRoleRequest,
-  ApiResponse,
-  PaginatedResponse,
-  AssignmentDto,
 } from '@/types/api'
 
 export class ActorApiService {
   constructor(private apiClient: ApiClient) {}
 
   async getAllActors(): Promise<string[]> {
-    const response = await this.apiClient.get<ApiResponse<string[]>>('/Actor/GetAllActors')
-    return response.data
+    return await this.apiClient.get<string[]>('/Actor/GetAll')
   }
 
   async getActor(guid: string): Promise<ActorDto> {
-    const response = await this.apiClient.get<ApiResponse<ActorDto>>(`/Actor/GetActor/${guid}`)
-    return response.data
+    return await this.apiClient.get<ActorDto>(`/Actor/Get/${guid}`)
   }
 
   async createActor(request: CreateActorRequest): Promise<string> {
-    const response = await this.apiClient.post<ApiResponse<string>>('/Actor/CreateActor', {
-      Nickname: request.nickname,
-      RoleGuid: request.roleGuid,
-    })
-    return response.data
+    const requestBody: any = {
+      DisplayName: request.DisplayName,
+    }
+    
+    // Only include RoleGuid if it's provided (not undefined)
+    if (request.RoleGuid !== undefined && request.RoleGuid !== null && request.RoleGuid !== '') {
+      requestBody.RoleGuid = request.RoleGuid
+    }
+    
+    const response = await this.apiClient.post<string>('/Actor/Create', requestBody)
+    return response
   }
 
-  async setActorNickname(actorGuid: string, nickname: string): Promise<void> {
-    await this.apiClient.patch<ApiResponse<void>>(`/Actor/SetActorNickname/${actorGuid}`, {
-      Nickname: nickname,
+  async setActorDisplayName(actorGuid: string, displayName: string): Promise<void> {
+    await this.apiClient.patch<void>(`/Actor/SetDisplayName`, {
+      Guid: actorGuid,
+      DisplayName: displayName,
     })
   }
 
-  async setActorRole(actorGuid: string, roleGuid?: string): Promise<void> {
-    await this.apiClient.patch<ApiResponse<void>>(`/Actor/SetActorRole/${actorGuid}`, {
-      RoleGuid: roleGuid,
+  async setActorRole(actorGuid: string, roleGuid?: string | null): Promise<void> {
+    await this.apiClient.patch<void>(`/Actor/SetRole`, {
+      Guid: actorGuid,
+      RoleGuid: roleGuid ?? null,
     })
   }
 
-  async getAssignments(): Promise<AssignmentDto[]> {
-    const response = await this.apiClient.get<ApiResponse<PaginatedResponse<AssignmentDto>>>(
-      '/Actor/GetAssignments'
-    )
-    return response.data.data
+  async getAllAssignments(actorGuid: string): Promise<string[]> {
+    return await this.apiClient.get<string[]>(`/Actor/GetAllAssignments/${actorGuid}`)
   }
 
   async deleteActor(guid: string): Promise<void> {
-    await this.apiClient.delete<ApiResponse<void>>(`/Actor/DeleteActor/${guid}`)
+    await this.apiClient.delete<void>(`/Actor/Delete/${guid}`)
   }
 }
+
+
 
 
 

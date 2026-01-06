@@ -35,7 +35,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  label: 'Select Actor',
+  label: 'Select User',
   showLabel: true,
 })
 

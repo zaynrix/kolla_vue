@@ -57,15 +57,7 @@ export function useActor() {
    */
   const getActorAsUser = async (guid: string): Promise<User> => {
     const actor = await getActor(guid)
-    let roleDto = null
-    if (actor.roleGuid) {
-      try {
-        roleDto = await api.role.getRole(actor.roleGuid)
-      } catch {
-        // Role not found, use default
-      }
-    }
-    return mapActorToUser(actor, roleDto || undefined)
+    return mapActorToUser(actor, actor.role || undefined)
   }
 
   /**
@@ -75,11 +67,15 @@ export function useActor() {
     loading.value = true
     error.value = null
     try {
+      if (!request.DisplayName || request.DisplayName.trim() === '') {
+        throw new Error('Display Name is required')
+      }
       const actorGuid = await api.actor.createActor(request)
       await loadActors() // Reload actors list
       return actorGuid
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to create actor')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create actor'
+      error.value = new Error(errorMessage)
       throw err
     } finally {
       loading.value = false
@@ -87,13 +83,13 @@ export function useActor() {
   }
 
   /**
-   * Update actor nickname
+   * Update actor display name
    */
-  const updateActorNickname = async (actorGuid: string, nickname: string): Promise<void> => {
+  const updateActorDisplayName = async (actorGuid: string, displayName: string): Promise<void> => {
     loading.value = true
     error.value = null
     try {
-      await api.actor.setActorNickname(actorGuid, nickname)
+      await api.actor.setActorDisplayName(actorGuid, displayName)
       await loadActors() // Reload actors list
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to update actor')
@@ -123,12 +119,12 @@ export function useActor() {
   /**
    * Get assignments for an actor
    */
-  const getActorAssignments = async (): Promise<AssignmentDto[]> => {
+  const getActorAssignments = async (actorGuid: string): Promise<string[]> => {
     loading.value = true
     error.value = null
     try {
-      const assignments = await api.actor.getAssignments()
-      return assignments
+      const assignmentGuids = await api.actor.getAllAssignments(actorGuid)
+      return assignmentGuids
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to load assignments')
       throw err
@@ -144,10 +140,14 @@ export function useActor() {
     loading.value = true
     error.value = null
     try {
+      if (!guid) {
+        throw new Error('Actor GUID is required')
+      }
       await api.actor.deleteActor(guid)
       await loadActors() // Reload actors list
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to delete actor')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete actor'
+      error.value = new Error(errorMessage)
       throw err
     } finally {
       loading.value = false
@@ -165,7 +165,7 @@ export function useActor() {
     getActor,
     getActorAsUser,
     createActor,
-    updateActorNickname,
+    updateActorDisplayName,
     updateActorRole,
     getActorAssignments,
     deleteActor,
