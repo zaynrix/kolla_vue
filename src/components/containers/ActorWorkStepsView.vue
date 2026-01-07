@@ -23,6 +23,7 @@
         :is-urgent="isUrgentStep(workStep)"
         :is-deadline-approaching="isDeadlineApproachingStep(workStep)"
         :assigned-users-map="assignedUsersMap"
+        :workflow-deadline="getWorkflowDeadline(workStep.workflowId)"
       >
         <template #actions="{ workStep }">
           <button
@@ -137,6 +138,11 @@ function isDeadlineApproachingStep(workStep: WorkStep): boolean {
   const deadline = new Date(workflow.deadline)
   const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
   return hoursUntilDeadline <= 24 && hoursUntilDeadline > 0
+}
+
+function getWorkflowDeadline(workflowId: string): Date | undefined {
+  const workflow = workflows.value.find((w) => w.id === workflowId)
+  return workflow?.deadline
 }
 
 async function handleSetPriority(workStepId: string) {

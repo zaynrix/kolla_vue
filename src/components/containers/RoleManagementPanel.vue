@@ -285,22 +285,22 @@ async function handleDelete(guid: string) {
 .stat-icon {
   width: 24px;
   height: 24px;
-  color: var(--color-primary-dark);
+  color: white;
 }
 
 .stat-value {
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
-  color: var(--color-primary-dark);
+  color: white;
   line-height: 1;
 }
 
 .stat-label {
   font-size: var(--text-xs);
-  color: var(--color-primary-dark);
+  color: white;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .header-border {

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/kolla_vue/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kolla - Aufgabenmanagementsystem</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // GitHub Pages 404 handler for SPA
+      // Redirect to index.html with the current path
+      // Vue Router will handle the routing client-side
+      const path = window.location.pathname;
+      const base = '/kolla_vue/';
+      
+      // Extract the route after the base path
+      let route = path.replace(base, '');
+      if (route && !route.startsWith('index.html')) {
+        // Remove trailing slash
+        route = route.replace(/\/$/, '');
+        // Redirect to index.html - Vue Router will handle the route
+        window.location.replace(base + 'index.html');
+      } else {
+        // Already at index.html or base, just reload
+        window.location.replace(base + 'index.html');
+      }
+    </script>
+  </body>
+</html>
+

@@ -19,6 +19,12 @@
       <span class="workflow-card__created">
         Created: {{ formattedCreatedAt }}
       </span>
+      <span v-if="workflow.deadline" class="workflow-card__deadline">
+        <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Deadline: {{ formattedDeadline }}
+      </span>
     </div>
 
     <div class="workflow-card__actions">
@@ -52,6 +58,17 @@ const formattedCreatedAt = computed(() => {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+  })
+})
+
+const formattedDeadline = computed(() => {
+  if (!props.workflow.deadline) return ''
+  return new Date(props.workflow.deadline).toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 })
 </script>
@@ -101,6 +118,23 @@ const formattedCreatedAt = computed(() => {
   font-size: 0.875rem;
   color: #888;
   margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.workflow-card__deadline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.deadline-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .workflow-card__actions {

@@ -49,6 +49,30 @@ export function useWorkStep() {
       const workStep = await api.workStep.createWorkStep(request)
       // Add to store - Vue reactivity will update UI automatically
       workStepStore.addWorkStep(workStep)
+
+      // Notify assigned users if work step was assigned
+      if (workStep.assignedTo) {
+        const assignedUserIds = Array.isArray(workStep.assignedTo)
+          ? workStep.assignedTo
+          : [workStep.assignedTo]
+        
+        assignedUserIds.forEach((userId) => {
+          notificationStore.addNotification({
+            id: `notification-assign-${Date.now()}-${userId}-${Math.random()}`,
+            userId,
+            title: 'New Work Step Assigned',
+            message: `You have been assigned a new work step: "${workStep.title}"`,
+            type: 'INFO',
+            read: false,
+            createdAt: new Date(),
+            relatedEntityId: workStep.id,
+            relatedEntityType: 'WORKSTEP',
+            workflowId: workStep.workflowId,
+            workStepId: workStep.id,
+          })
+        })
+      }
+
       return workStep
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to create work step')
@@ -253,18 +277,51 @@ export function useWorkStep() {
     loading.value = true
     error.value = null
     try {
+      // Get old work step to compare assignments
+      const oldWorkStep = workStepStore.getWorkStepById(id)
+      
       const workStep = await api.workStep.updateWorkStep(id, request)
       
       // Update store - Vue reactivity will automatically update UI
       // No need to reload - the board will update in real-time
       workStepStore.updateWorkStep(workStep)
 
+      // Notify users if assignment changed (reassign)
+      if (request.assignedTo !== undefined && oldWorkStep) {
+        const oldAssignees = Array.isArray(oldWorkStep.assignedTo)
+          ? oldWorkStep.assignedTo
+          : oldWorkStep.assignedTo ? [oldWorkStep.assignedTo] : []
+        
+        const newAssignees = Array.isArray(workStep.assignedTo)
+          ? workStep.assignedTo
+          : workStep.assignedTo ? [workStep.assignedTo] : []
+        
+        // Notify newly assigned users
+        newAssignees.forEach((userId) => {
+          if (!oldAssignees.includes(userId)) {
+            notificationStore.addNotification({
+              id: `notification-reassign-${Date.now()}-${userId}`,
+              userId,
+              title: 'Work Step Reassigned',
+              message: `You have been assigned to work step: "${workStep.title}"`,
+              type: 'INFO',
+              read: false,
+              createdAt: new Date(),
+              relatedEntityId: workStep.id,
+              relatedEntityType: 'WORKSTEP',
+              workflowId: workStep.workflowId,
+              workStepId: workStep.id,
+            })
+          }
+        })
+      }
+
       // Notify workflow manager if priority changed
       if (request.manualPriority) {
         const workflow = workStepStore.getWorkflowForStep(id)
         if (workflow) {
           notificationStore.addNotification({
-            id: `notification-${Date.now()}`,
+            id: `notification-priority-${Date.now()}`,
             userId: workflow.workflowManagerId,
             title: 'Work Step Priority Changed',
             message: `Priority for "${workStep.title}" has been updated.`,

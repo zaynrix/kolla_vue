@@ -29,6 +29,7 @@ export class WorkflowApiService {
     )
     
     // Map objectives to workflows
+    // Note: ObjectiveDto doesn't have a deadline field, so deadline is stored in frontend only
     return objectives.map((objective) => {
       return {
         id: objective.guid,
@@ -39,7 +40,7 @@ export class WorkflowApiService {
         createdBy: 'system', // Should come from backend
         workflowManagerId: 'system', // Should come from backend
         tenantId: undefined,
-        deadline: undefined, // Should come from backend
+        deadline: undefined, // Deadline is stored in frontend only (set during create/edit)
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -60,7 +61,7 @@ export class WorkflowApiService {
       createdBy: 'system',
       workflowManagerId: 'system',
       tenantId: undefined,
-      deadline: undefined,
+      deadline: undefined, // Deadline is stored in frontend only (set during create/edit)
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -126,6 +127,7 @@ export class WorkflowApiService {
     }
     
     // Return workflow object - use fetched data if available, otherwise use request data
+    // Note: Deadline is stored in frontend only (ObjectiveDto doesn't have deadline field)
     return {
       id: objective?.guid || objectiveGuid,
       name: objective?.displayName || request.name,

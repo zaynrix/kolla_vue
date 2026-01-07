@@ -41,20 +41,26 @@
             <div class="card-header">
               <span class="card-sequence">#{{ workStep.sequenceNumber }}</span>
               <span
-                :class="['card-priority', `priority--${getPriority(workStep).toLowerCase()}`]"
+                :class="['card-priority', `priority--${getPriority(workStep).toLowerCase().replace('_', '-')}`]"
               >
-                {{ getPriorityLabel(getPriority(workStep)) }}
+                {{ getPriorityLabel(getPriority(workStep)).toUpperCase() }}
               </span>
             </div>
-            <h4 class="card-title">{{ workStep.title }}</h4>
+            <h4 class="card-title">{{ workStep.title || 'Untitled' }}</h4>
             <p v-if="workStep.description" class="card-description">
               {{ truncate(workStep.description, 60) }}
             </p>
             <div class="card-footer">
-              <span class="card-duration">{{ workStep.duration }}h</span>
+              <span class="card-duration">{{ workStep.duration || 0 }}h</span>
               <span class="card-assigned" :class="{ 'card-assigned--unassigned': !hasAssignments(workStep) }">
                 {{ hasAssignments(workStep) ? getAssignedUsersText(workStep) : 'Unassigned' }}
               </span>
+            </div>
+            <div v-if="getWorkflowDeadline(workStep.workflowId)" class="card-deadline">
+              <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="deadline-text">{{ formatWorkflowDeadline(getWorkflowDeadline(workStep.workflowId)) }}</span>
             </div>
             <div class="card-actions">
               <select
@@ -90,7 +96,7 @@
                 </select>
               </div>
               
-              <!-- Admin Actions -->
+              <!-- Admin Actions - Always show for admin users -->
               <div v-if="isAdmin" class="card-admin-actions">
                 <button
                   @click.stop="handleEdit(workStep.id)"
@@ -137,7 +143,7 @@ interface Props {
   workSteps: WorkStep[]
   assignedUsers?: Map<string, string>
   isAdmin?: boolean
-  workflows?: Array<{ id: string; name: string }>
+  workflows?: Array<{ id: string; name: string; deadline?: Date }>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -195,6 +201,22 @@ function isDeadlineApproaching(workStep: WorkStep): boolean {
 function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.substring(0, maxLength) + '...'
+}
+
+function getWorkflowDeadline(workflowId: string): Date | undefined {
+  const workflow = props.workflows?.find((w) => w.id === workflowId)
+  return workflow?.deadline
+}
+
+function formatWorkflowDeadline(deadline: Date | undefined): string {
+  if (!deadline) return ''
+  return new Date(deadline).toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function hasAssignments(workStep: WorkStep): boolean {
@@ -448,8 +470,8 @@ watch(() => props.workSteps, (newSteps) => {
   padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 280px);
-  min-height: 400px;
+  max-height: calc(100vh - 200px);
+  min-height: 600px;
   border: 1px solid var(--color-border);
   box-shadow: 
     0 2px 8px rgba(0, 0, 0, 0.08),
@@ -486,7 +508,8 @@ watch(() => props.workSteps, (newSteps) => {
 @media (min-width: 1440px) {
   .board-column {
     width: 380px;
-    max-height: calc(100vh - 300px);
+    max-height: calc(100vh - 180px);
+    min-height: 700px;
   }
 }
 
@@ -500,7 +523,8 @@ watch(() => props.workSteps, (newSteps) => {
   .board-column {
     width: 300px;
     min-width: 280px;
-    max-height: calc(100vh - 240px);
+    max-height: calc(100vh - 200px);
+    min-height: 500px;
   }
   
   .board-columns {
@@ -558,7 +582,7 @@ watch(() => props.workSteps, (newSteps) => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  min-height: 200px;
+  min-height: 500px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   border-radius: var(--radius-lg);
   padding: var(--spacing-sm);
@@ -604,14 +628,14 @@ watch(() => props.workSteps, (newSteps) => {
 .board-card {
   background: #ffffff;
   border-radius: 10px;
-  padding: 1rem;
+  padding: 1.5rem;
   cursor: grab;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
   border-left: 3px solid #d1d5db;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   user-select: none;
   width: 100%;
   min-width: 0;
@@ -619,7 +643,10 @@ watch(() => props.workSteps, (newSteps) => {
   touch-action: none;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  min-height: 280px;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .board-card:active {
@@ -734,23 +761,23 @@ watch(() => props.workSteps, (newSteps) => {
 
 .card-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #111827;
   line-height: 1.5;
   word-break: break-word;
+  display: block;
+  flex-shrink: 0;
 }
 
 .card-description {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   color: #6b7280;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 2.4em;
 }
 
 .card-footer {
@@ -759,8 +786,10 @@ watch(() => props.workSteps, (newSteps) => {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  padding-top: 0.5rem;
+  padding-top: 0.75rem;
   border-top: 1px solid #f3f4f6;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .card-duration {
@@ -769,12 +798,13 @@ watch(() => props.workSteps, (newSteps) => {
   font-size: 0.8125rem;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
 
 .card-duration::before {
   content: '⏱';
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  opacity: 0.7;
 }
 
 .card-assigned {
@@ -795,13 +825,41 @@ watch(() => props.workSteps, (newSteps) => {
   color: #92400e;
 }
 
-.card-actions {
+.card-deadline {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #dc2626;
   margin-top: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.deadline-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.deadline-text {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-actions {
+  margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid #f3f4f6;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .card-admin-actions {

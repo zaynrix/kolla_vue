@@ -17,6 +17,11 @@ export class AuthorizationService implements IAuthorizationService {
    * Security requirement: ≤0.5 seconds
    */
   canAccessWorkStep(user: User, workStep: WorkStep): AuthorizationResult {
+    // Admin can access all work steps
+    if (user.role === Role.ADMIN) {
+      return { allowed: true }
+    }
+
     // Workflow manager can access all work steps
     if (user.role === Role.WORKFLOW_MANAGER) {
       return { allowed: true }

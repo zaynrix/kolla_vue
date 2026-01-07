@@ -6,7 +6,16 @@
   <div class="workflow-details-panel">
     <div v-if="workflow" class="panel-header">
       <div class="header-content">
-        <h2>{{ workflow.name }}</h2>
+        <div class="header-title-section">
+          <h2>{{ workflow.name }}</h2>
+          <div v-if="workflow.deadline" class="workflow-deadline-badge">
+            <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="deadline-label">Deadline:</span>
+            <span class="deadline-date">{{ formatDeadline(workflow.deadline) }}</span>
+          </div>
+        </div>
         <div v-if="canManage" class="header-actions">
           <button @click="showEditWorkflowForm = !showEditWorkflowForm" class="btn btn--secondary btn--small">
             ✏️ Edit Workflow
@@ -75,6 +84,7 @@
           :is-urgent="isUrgentStep(workStep)"
           :is-deadline-approaching="isDeadlineApproachingStep(workStep)"
           :assigned-users-map="assignedUsersMap"
+          :workflow-deadline="workflow?.deadline"
           @complete="handleComplete"
         >
           <template #actions="{ workStep }">
@@ -224,6 +234,16 @@ function isDeadlineApproachingStep(workStep: WorkStep): boolean {
   const deadline = new Date(workflow.value.deadline)
   const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
   return hoursUntilDeadline <= 24 && hoursUntilDeadline > 0
+}
+
+function formatDeadline(deadline: Date): string {
+  return new Date(deadline).toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 async function handleComplete(workStepId: string) {
@@ -380,9 +400,42 @@ async function handleWorkflowUpdated(workflowId: string) {
   gap: var(--spacing-md);
 }
 
+.header-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .panel-header h2 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.workflow-deadline-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.deadline-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.deadline-label {
+  font-weight: 600;
+}
+
+.deadline-date {
+  font-weight: 700;
 }
 
 .header-actions {

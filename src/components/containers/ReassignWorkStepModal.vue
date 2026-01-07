@@ -118,26 +118,37 @@ watch(
 )
 
 async function handleReassign() {
-  if (!props.workStep) return
+  if (!props.workStep) {
+    error.value = 'Work step not found'
+    return
+  }
+  
+  if (selectedActorIds.value.length === 0) {
+    error.value = 'Please select at least one user to assign'
+    return
+  }
   
   error.value = null
   
   try {
-    // Convert to array or single string
-    const assignedTo = selectedActorIds.value.length === 1
-      ? selectedActorIds.value[0]
-      : selectedActorIds.value.length > 1
-      ? [...selectedActorIds.value]
-      : undefined
+    // Backend API only supports single assignee, so use first selected
+    // If multiple are selected, we'll use the first one
+    const assigneeGuid = selectedActorIds.value[0]
+    
+    console.log('[ReassignModal] Reassigning work step:', props.workStep.id, 'to:', assigneeGuid)
     
     await updateWorkStep(props.workStep.id, {
-      assignedTo,
+      assignedTo: assigneeGuid,
     })
+    
+    console.log('[ReassignModal] Reassign successful')
     
     emit('reassigned', props.workStep.id)
     handleClose()
   } catch (err) {
+    console.error('[ReassignModal] Reassign error:', err)
     error.value = err instanceof Error ? err.message : 'Failed to reassign work step'
+    // Don't close modal on error so user can see the error and try again
   }
 }
 

@@ -113,6 +113,7 @@ interface Props {
   workStep: WorkStep | null
   assignedUsersMap?: Map<string, string>
   workflowName?: string
+  workflowDeadline?: Date
   isAdmin?: boolean
 }
 
@@ -159,6 +160,16 @@ function getPriorityLabel(priority: Priority): string {
 function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleString()
+}
+
+function formatDeadline(deadline: Date): string {
+  return new Date(deadline).toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function handleClose() {
@@ -341,6 +352,24 @@ function handleDelete() {
   border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
+}
+
+.deadline-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deadline-icon {
+  width: 18px;
+  height: 18px;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.deadline-value {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .modal-footer {

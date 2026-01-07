@@ -19,7 +19,7 @@
         <span class="workstep-card__sequence">Step {{ workStep.sequenceNumber }}</span>
       </div>
       <span
-        :class="['workstep-card__priority', `priority--${priority.toLowerCase()}`]"
+        :class="['workstep-card__priority', `priority--${priority.toLowerCase().replace('_', '-')}`]"
       >
         {{ priorityLabel }}
       </span>
@@ -44,6 +44,14 @@
           <div v-if="hasAssignments" class="workstep-card__assigned">
             <span class="assigned-label">Assigned to:</span>
             <span class="assigned-users">{{ assignedUsersText }}</span>
+          </div>
+
+          <div v-if="workflowDeadline" class="workstep-card__deadline">
+            <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="deadline-label">Workflow Deadline:</span>
+            <span class="deadline-date">{{ formattedWorkflowDeadline }}</span>
           </div>
 
     <div class="workstep-card__actions">
@@ -73,6 +81,7 @@ interface Props {
   isDeadlineApproaching?: boolean
   assignedUserName?: string
   assignedUsersMap?: Map<string, string> // Map of user IDs to usernames
+  workflowDeadline?: Date // Workflow deadline
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -115,6 +124,17 @@ const assignedUsersText = computed(() => {
   // Single assignment (backward compatibility)
   return props.assignedUsersMap?.get(props.workStep.assignedTo) || props.assignedUserName || props.workStep.assignedTo
 })
+
+const formattedWorkflowDeadline = computed(() => {
+  if (!props.workflowDeadline) return ''
+  return new Date(props.workflowDeadline).toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
 </script>
 
 <style scoped>
@@ -122,9 +142,13 @@ const assignedUsersText = computed(() => {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 1.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   background: white;
   transition: box-shadow 0.2s;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .workstep-card:hover {
@@ -159,11 +183,15 @@ const assignedUsersText = computed(() => {
   margin: 0 0 0.25rem 0;
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--color-text-primary, #1a1a1a);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .workstep-card__sequence {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--color-text-secondary, #666);
 }
 
 .workstep-card__priority {
@@ -175,24 +203,31 @@ const assignedUsersText = computed(() => {
   white-space: nowrap;
 }
 
-.priority--immediate {
+.priority--short-term,
+.priority--short_term {
   background: #ffebee;
   color: #c62828;
 }
 
-.priority--medium_term {
+.priority--mid-term,
+.priority--mid_term {
   background: #fff3e0;
   color: #e65100;
 }
 
+.priority--long-term,
 .priority--long_term {
   background: #e3f2fd;
   color: #1565c0;
 }
 
 .workstep-card__description {
-  color: #666;
+  color: var(--color-text-secondary, #4a5568);
   margin: 0.5rem 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+  flex: 1;
 }
 
 .workstep-card__meta {
@@ -200,8 +235,9 @@ const assignedUsersText = computed(() => {
   gap: 1rem;
   flex-wrap: wrap;
   font-size: 0.875rem;
-  color: #888;
+  color: var(--color-text-secondary, #4a5568);
   margin: 0.5rem 0;
+  align-items: center;
 }
 
 .workstep-card__status {
@@ -229,11 +265,14 @@ const assignedUsersText = computed(() => {
 
 .workstep-card__assigned {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--color-text-secondary, #4a5568);
   margin: 0.5rem 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .assigned-label {
@@ -245,10 +284,39 @@ const assignedUsersText = computed(() => {
   font-weight: 500;
 }
 
+.workstep-card__deadline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md, 6px);
+  font-weight: 500;
+}
+
+.deadline-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.deadline-label {
+  font-weight: 600;
+}
+
+.deadline-date {
+  font-weight: 700;
+}
+
 .workstep-card__actions {
   display: flex;
   gap: var(--spacing-xs);
-  margin-top: var(--spacing-md);
+  margin-top: auto;
+  padding-top: var(--spacing-md);
   flex-wrap: wrap;
 }
 

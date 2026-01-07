@@ -249,33 +249,40 @@ const originalRoleGuid = ref<string | null>(null)
 const originalAssignees = ref<string[]>([])
 
 // Filter actors by selected role GUID
-// Filter actors by selected role GUID
+// Always include currently assigned users, even if they don't have the selected role
 const availableUsers = computed(() => {
+  // Get all actors
+  const allActors = actors.value.map((actor) => ({
+    id: actor.guid,
+    username: actor.displayName,
+    email: `${actor.displayName}@example.com`,
+    role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
+    tenantId: undefined,
+  }))
+  
+  // Get currently assigned user IDs (from originalAssignees to ensure they're always shown)
+  const assignedIds = new Set([
+    ...selectedAssignees.value,
+    ...originalAssignees.value
+  ])
+  
   // If no role is selected, show all actors
   if (!selectedRoleGuid.value) {
-    return actors.value.map((actor) => ({
-      id: actor.guid,
-      username: actor.displayName,
-      email: `${actor.displayName}@example.com`,
-      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
-      tenantId: undefined,
-    }))
+    return allActors
   }
   
-  // Filter actors that have the selected role
-  return actors.value
-    .filter((actor) => {
-      if (!actor.role) return false
-      // Check if actor's role GUID matches the selected role GUID
-      return actor.role.guid === selectedRoleGuid.value
-    })
-    .map((actor) => ({
-      id: actor.guid,
-      username: actor.displayName,
-      email: `${actor.displayName}@example.com`,
-      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
-      tenantId: undefined,
-    }))
+  // Filter actors that have the selected role OR are currently assigned
+  return allActors.filter((actor) => {
+    // Always include if currently assigned (from original or selected)
+    if (assignedIds.has(actor.id)) {
+      return true
+    }
+    
+    // Otherwise, only include if they have the selected role
+    const actorObj = actors.value.find((a) => a.guid === actor.id)
+    if (!actorObj?.role) return false
+    return actorObj.role.guid === selectedRoleGuid.value
+  })
 })
 
 onMounted(async () => {
@@ -309,8 +316,11 @@ function formatDateForAPI(dateString: string | undefined): string | undefined {
 // Initialize form with work step data
 watch(
   () => props.workStep,
-  (workStep) => {
+  async (workStep) => {
     if (workStep) {
+      // Ensure actors and roles are loaded first
+      await Promise.all([loadActors(), loadRoles()])
+      
       // Store original values for comparison
       originalWorkStep.value = { ...workStep }
       
@@ -341,11 +351,11 @@ watch(
       selectedRoleGuid.value = matchingRole?.guid || null
       originalRoleGuid.value = matchingRole?.guid || null
 
-      // Set selected assignees
+      // Set selected assignees - ensure they are properly initialized
       if (workStep.assignedTo) {
         const assignees = Array.isArray(workStep.assignedTo)
-          ? [...workStep.assignedTo]
-          : [workStep.assignedTo]
+          ? [...workStep.assignedTo].filter(id => id !== undefined && id !== null)
+          : workStep.assignedTo ? [workStep.assignedTo] : []
         selectedAssignees.value = assignees
         originalAssignees.value = [...assignees]
       } else {
@@ -377,11 +387,37 @@ watch(
   }
 )
 
-// Watch for role GUID changes and update available users
+// Watch for role GUID changes - keep assigned users even if role changes
+// Don't clear assignees when role changes, as they might still be valid
 watch(() => selectedRoleGuid.value, () => {
-  // Clear assignee selections when role changes (they might not have the new role)
-  selectedAssignees.value = []
+  // Don't clear assignees - they should remain selected even if role changes
+  // The availableUsers computed will still show them
 })
+
+// Watch for actors to be loaded and ensure assigned users are visible
+watch(
+  () => actors.value,
+  () => {
+    if (props.workStep && actors.value.length > 0) {
+      // Re-initialize assignees to ensure they're visible
+      if (props.workStep.assignedTo) {
+        const assignees = Array.isArray(props.workStep.assignedTo)
+          ? [...props.workStep.assignedTo].filter(id => id !== undefined && id !== null)
+          : props.workStep.assignedTo ? [props.workStep.assignedTo] : []
+        
+        // Only update if they're different to avoid infinite loops
+        const currentIds = [...selectedAssignees.value].sort().join(',')
+        const newIds = [...assignees].sort().join(',')
+        if (currentIds !== newIds) {
+          selectedAssignees.value = assignees
+          if (originalAssignees.value.length === 0) {
+            originalAssignees.value = [...assignees]
+          }
+        }
+      }
+    }
+  }
+)
 
 async function handleSubmit() {
   if (!props.workStep) return
@@ -438,31 +474,33 @@ async function handleSubmit() {
     }
 
     // Only update assignees if they changed
-    const currentAssignees = selectedAssignees.value.length === 0
-      ? []
-      : selectedAssignees.value.length === 1
-        ? [selectedAssignees.value[0]]
-        : [...selectedAssignees.value]
+    // Normalize arrays for comparison (sort to ensure order doesn't matter)
+    const currentAssignees = [...selectedAssignees.value]
+      .filter((id): id is string => id !== undefined && id !== null)
+      .sort()
     
-    const originalAssigneesArray = originalAssignees.value.length === 0
-      ? []
-      : originalAssignees.value.length === 1
-        ? [originalAssignees.value[0]]
-        : [...originalAssignees.value]
+    const originalAssigneesArray = [...originalAssignees.value]
+      .filter((id): id is string => id !== undefined && id !== null)
+      .sort()
     
-    // Compare arrays
+    // Compare arrays (order-independent)
     const assigneesChanged = 
       currentAssignees.length !== originalAssigneesArray.length ||
-      currentAssignees.some((id, index) => id !== originalAssigneesArray[index]) ||
-      originalAssigneesArray.some((id, index) => id !== currentAssignees[index])
+      currentAssignees.some((id) => !originalAssigneesArray.includes(id)) ||
+      originalAssigneesArray.some((id) => !currentAssignees.includes(id))
     
     if (assigneesChanged) {
-      const filteredAssignees = currentAssignees.filter((id): id is string => id !== undefined)
-      updateRequest.assignedTo = filteredAssignees.length === 0
-        ? undefined
-        : filteredAssignees.length === 1
-          ? filteredAssignees[0]!
-          : filteredAssignees
+      // Backend only supports single assignee, so use first selected
+      // If multiple are selected, we'll use the first one
+      if (currentAssignees.length === 0) {
+        updateRequest.assignedTo = undefined
+      } else if (currentAssignees.length === 1) {
+        updateRequest.assignedTo = currentAssignees[0]!
+      } else {
+        // Multiple selected - backend only supports one, use first
+        updateRequest.assignedTo = currentAssignees[0]!
+        console.warn('Multiple assignees selected, but backend only supports single assignee. Using first selected:', currentAssignees[0])
+      }
     }
 
     // Only call update if there are changes

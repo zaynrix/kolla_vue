@@ -5,7 +5,7 @@
 -->
 <template>
   <div class="actor-dashboard">
-    <!-- Header Section -->
+the     <!-- Header Section -->
     <div class="actor-dashboard__header">
       <div class="header-content">
         <div class="header-title-section">
@@ -204,7 +204,7 @@
           :work-steps="displayedWorkSteps"
           :assigned-users="assignedUsersMap"
           :is-admin="isAdmin"
-          :workflows="workflows.map(w => ({ id: w.id, name: w.name }))"
+          :workflows="workflows.map(w => ({ id: w.id, name: w.name, deadline: w.deadline }))"
           @select="handleWorkStepSelect"
           @complete="handleComplete"
           @status-change="handleStatusChange"
@@ -225,6 +225,7 @@
                 :is-urgent="isUrgentStep(workStep)"
                 :is-deadline-approaching="isDeadlineApproachingStep(workStep)"
                 :assigned-users-map="assignedUsersMap"
+                :workflow-deadline="getWorkflowDeadline(workStep.workflowId)"
                 @complete="handleComplete"
                 @view="handleView"
               >
@@ -309,7 +310,9 @@
                   {{ workStep.status.replace('_', ' ') }}
                 </span>
               </td>
-              <td class="col-workflow">{{ getWorkflowName(workStep.workflowId) }}</td>
+              <td class="col-workflow">
+                <span class="workflow-name">{{ getWorkflowName(workStep.workflowId) }}</span>
+              </td>
               <td class="col-actions" @click.stop>
                 <div class="action-buttons">
                   <button
@@ -367,6 +370,7 @@
       :work-step="selectedWorkStep"
       :assigned-users-map="assignedUsersMap"
       :workflow-name="getWorkflowName(selectedWorkStep?.workflowId || '')"
+      :workflow-deadline="selectedWorkStep ? getWorkflowDeadline(selectedWorkStep.workflowId) : undefined"
       :is-admin="isAdmin"
       @close="showDetailModal = false"
       @edit="handleEditFromModal"
@@ -418,6 +422,7 @@ import { usePriority } from '@/composables/usePriority'
 import { useUserStore } from '@/stores/user'
 import { useWorkStepStore } from '@/stores/workStep'
 import { useApi } from '@/composables/useApi'
+import { useAuthorization } from '@/composables/useAuthorization'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
 import WorkStepBoard from '@/components/presenters/WorkStepBoard.vue'
 import UserSelector from '@/components/presenters/UserSelector.vue'
@@ -439,6 +444,7 @@ const { workflows, loadWorkflows } = useWorkflow()
 const { currentUser, availableUsers: viewModelUsers, setCurrentUser } = useUser()
 const { actors, loadActors } = useActor()
 const userStore = useUserStore()
+const { canAccessWorkStep } = useAuthorization()
 
 // Modal states
 const showDetailModal = ref(false)
@@ -598,6 +604,15 @@ async function retryLoad() {
 // Admin stays as admin, just filters the view to show selected actor's assignments
 
 function handleWorkStepSelect(workStep: WorkStep) {
+  // Check authorization for non-admin users
+  if (!isAdmin.value) {
+    const authResult = canAccessWorkStep(workStep)
+    if (!authResult.allowed) {
+      alert(`Access denied: ${authResult.reason || 'You do not have permission to access this work step.'}`)
+      return
+    }
+  }
+  
   if (isAdmin.value) {
     // For admins, show details modal when clicking on board card
     handleViewDetails(workStep.id)
@@ -645,7 +660,27 @@ function getWorkflowName(workflowId: string): string {
   return workflow?.name || 'Unknown'
 }
 
+function getWorkflowDeadline(workflowId: string): Date | undefined {
+  const workflow = workflows.value.find((w) => w.id === workflowId)
+  return workflow?.deadline
+}
+
 async function handleComplete(workStepId: string) {
+  const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
+  if (!workStep) {
+    alert('Work step not found')
+    return
+  }
+  
+  // Check authorization for non-admin users
+  if (!isAdmin.value) {
+    const authResult = canAccessWorkStep(workStep)
+    if (!authResult.allowed) {
+      alert(`Access denied: ${authResult.reason || 'You do not have permission to complete this work step.'}`)
+      return
+    }
+  }
+  
   if (confirm('Mark this work step as completed?')) {
     try {
       // completeWorkStep updates the store directly, Vue reactivity handles UI updates
@@ -664,10 +699,22 @@ function handleView(workStepId: string) {
 
 function handleViewDetails(workStepId: string) {
   const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
-  if (workStep) {
-    selectedWorkStep.value = workStep
-    showDetailModal.value = true
+  if (!workStep) {
+    alert('Work step not found')
+    return
   }
+  
+  // Check authorization for non-admin users
+  if (!isAdmin.value) {
+    const authResult = canAccessWorkStep(workStep)
+    if (!authResult.allowed) {
+      alert(`Access denied: ${authResult.reason || 'You do not have permission to view this work step.'}`)
+      return
+    }
+  }
+  
+  selectedWorkStep.value = workStep
+  showDetailModal.value = true
 }
 
 function handleEdit(workStepId: string) {
@@ -679,20 +726,34 @@ function handleEdit(workStepId: string) {
 }
 
 function handleReassign(workStepId: string) {
-  const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
+  // Try to find work step in displayed work steps first, then in all work steps
+  let workStep = displayedWorkSteps.value.find(ws => ws.id === workStepId)
+  if (!workStep) {
+    workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
+  }
+  if (!workStep) {
+    // If still not found, try in myWorkSteps (for non-admin users)
+    workStep = myWorkSteps.value.find(ws => ws.id === workStepId)
+  }
+  
   if (workStep) {
     selectedWorkStep.value = workStep
     showReassignModal.value = true
+  } else {
+    console.error('Work step not found for reassign:', workStepId)
+    alert('Work step not found. Please refresh the page and try again.')
   }
 }
 
-function handleReassigned(workStepId: string) {
+async function handleReassigned(workStepId: string) {
   // Reload work steps to reflect changes
   if (isAdmin.value) {
-    loadWorkSteps()
+    await loadWorkSteps()
   } else {
-    loadMyWorkSteps()
+    await loadMyWorkSteps()
   }
+  // Also reload workflows to ensure consistency
+  await loadWorkflows()
 }
 
 function handleUpdated(workStepId: string) {
@@ -704,10 +765,12 @@ function handleUpdated(workStepId: string) {
   }
 }
 
-function handleCreated(workStepId: string) {
+async function handleCreated(workStepId: string) {
   // Reload work steps to show new work step
   if (isAdmin.value) {
-    loadWorkSteps()
+    await loadWorkSteps()
+  } else {
+    await loadMyWorkSteps()
   }
   showCreateModal.value = false
   selectedWorkflowId.value = workflows.value.length > 0 && workflows.value[0] ? workflows.value[0].id : ''
@@ -764,6 +827,20 @@ function handleDeleteFromModal() {
 }
 
 async function handleStatusChange(workStepId: string, newStatus: TaskStatus) {
+  const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
+  if (!workStep) {
+    console.error('Work step not found:', workStepId)
+    return
+  }
+  
+  // Check authorization for non-admin users
+  if (!isAdmin.value) {
+    const authResult = canAccessWorkStep(workStep)
+    if (!authResult.allowed) {
+      alert(`Access denied: ${authResult.reason || 'You do not have permission to change the status of this work step.'}`)
+      return
+    }
+  }
   // Get current step for potential rollback
   const workStepStore = useWorkStepStore()
   const currentStep = workStepStore.getWorkStepById(workStepId)
@@ -1480,24 +1557,31 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 
 .actor-dashboard__cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: var(--spacing-xl);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xl);
   margin-top: var(--spacing-xl);
   background: var(--color-background);
   border-radius: var(--radius-xl);
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   .actor-dashboard__cards {
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
     gap: var(--spacing-2xl);
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .actor-dashboard__cards {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: var(--spacing-xl);
   }
 }
 
 @media (min-width: 768px) and (max-width: 1199px) {
   .actor-dashboard__cards {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: var(--spacing-lg);
   }
 }
@@ -1620,21 +1704,30 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 
 .workstep-title {
   font-weight: 600;
-  color: #212529;
+  color: var(--color-text-primary, #1a1a1a);
   font-size: 0.9375rem;
   line-height: 1.4;
 }
 
 .workstep-description {
   font-size: 0.8125rem;
-  color: #6c757d;
+  color: var(--color-text-secondary, #4a5568);
   line-height: 1.5;
   margin: 0;
+  margin-top: 0.25rem;
 }
 
 /* Priority Column */
 .col-priority {
   min-width: 100px;
+}
+
+.col-workflow {
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.workflow-name {
+  color: var(--color-text-primary, #1a1a1a);
 }
 
 .priority-badge {
