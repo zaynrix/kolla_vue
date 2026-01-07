@@ -105,6 +105,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useWorkStepStore } from '@/stores/workStep'
 import type { WorkStep, Priority } from '@/types/domain'
 import { Priority as PriorityEnum } from '@/types/domain'
 
@@ -145,7 +146,11 @@ const assignedUserIds = computed(() => {
 })
 
 function getPriority(workStep: WorkStep): Priority {
-  return workStep.manualPriority || workStep.priority
+  // Priority should be calculated based on remaining duration of ALL remaining work steps
+  // Use the calculated priority from the store instead of the backend priority
+  const workStepStore = useWorkStepStore()
+  const now = new Date()
+  return workStep.manualPriority || workStepStore.calculatePriority(workStep, now)
 }
 
 function getPriorityLabel(priority: Priority): string {

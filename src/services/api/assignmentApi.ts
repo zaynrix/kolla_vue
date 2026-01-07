@@ -162,7 +162,7 @@ export class AssignmentApiService {
     }
 
     await this.apiClient.patch<void>(`/Assignment/SetStartDate`, {
-      Guid: guid,
+      guid: guid,
       StartDate: formatDate(startDate),
     })
   }
@@ -189,21 +189,21 @@ export class AssignmentApiService {
     }
 
     await this.apiClient.patch<void>(`/Assignment/SetDeadlineDate`, {
-      Guid: guid,
+      guid: guid,
       DeadlineDate: formatDate(deadlineDate),
     })
   }
 
   async setAssignmentAssignee(guid: string, assigneeGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetAssignee`, {
-      Guid: guid,
+      guid: guid,
       AssigneeGuid: assigneeGuid ?? null,
     })
   }
 
   async setAssignmentRequiredRole(guid: string, requiredRoleGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetRequiredRole`, {
-      Guid: guid,
+      guid: guid,
       RequiredRoleGuid: requiredRoleGuid ?? null,
     })
   }
@@ -218,7 +218,7 @@ export class AssignmentApiService {
     }
     
     await this.apiClient.patch<void>(`/Assignment/SetPriority`, {
-      Guid: guid,
+      guid: guid,
       priority: priority,
     })
   }
@@ -234,14 +234,14 @@ export class AssignmentApiService {
     }
     
     await this.apiClient.patch<void>(`/Assignment/SetStatus`, {
-      Guid: guid,
+      guid: guid,
       assignmentStatus: assignmentStatus,
     })
   }
 
   async setAssignmentParentObjective(guid: string, parentObjectiveGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetParentObjective`, {
-      Guid: guid,
+      guid: guid,
       ParentObjectiveGuid: parentObjectiveGuid ?? null,
     })
   }

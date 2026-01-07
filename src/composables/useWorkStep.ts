@@ -277,14 +277,25 @@ export function useWorkStep() {
     loading.value = true
     error.value = null
     try {
-      // Get old work step to compare assignments
-      const oldWorkStep = workStepStore.getWorkStepById(id)
+      console.log('[useWorkStep] Updating work step:', id, 'with request:', request)
       
-      const workStep = await api.workStep.updateWorkStep(id, request)
+      // Get old work step to compare assignments and preserve workflowId/sequenceNumber
+      const oldWorkStep = workStepStore.getWorkStepById(id)
+      if (!oldWorkStep) {
+        throw new Error(`Work step with id ${id} not found in store`)
+      }
+      
+      console.log('[useWorkStep] Old work step:', oldWorkStep)
+      
+      const workStep = await api.workStep.updateWorkStep(id, request, oldWorkStep)
+      
+      console.log('[useWorkStep] Updated work step from API:', workStep)
       
       // Update store - Vue reactivity will automatically update UI
       // No need to reload - the board will update in real-time
       workStepStore.updateWorkStep(workStep)
+      
+      console.log('[useWorkStep] Store updated successfully')
 
       // Notify users if assignment changed (reassign)
       if (request.assignedTo !== undefined && oldWorkStep) {

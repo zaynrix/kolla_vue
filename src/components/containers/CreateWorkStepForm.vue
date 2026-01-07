@@ -115,7 +115,12 @@
             {{ role.displayName }}{{ role.isAdmin ? ' (Admin)' : '' }}
           </option>
         </select>
-        <small class="form-hint">Optional - Select a role that is required for this assignment</small>
+        <small v-if="roles.length === 0" class="form-hint form-hint--error">
+          No roles available. Please create a role first.
+        </small>
+        <small v-else class="form-hint">
+          {{ roles.length }} role(s) available. Select a role to filter users.
+        </small>
       </div>
 
       <div class="form-group">
@@ -137,8 +142,14 @@
               {{ user.username }} ({{ user.role }})
             </label>
           </div>
-          <p v-if="availableUsers.length === 0" class="no-users">
-            No users available with the selected role.
+          <p v-if="actors.length === 0" class="no-users">
+            No users available. Please create users first.
+          </p>
+          <p v-else-if="availableUsers.length === 0 && selectedRoleGuid" class="no-users">
+            No users available with the selected role. Try selecting "No Role Required" to see all users.
+          </p>
+          <p v-else-if="availableUsers.length === 0" class="no-users">
+            No users available.
           </p>
         </div>
       </div>
@@ -223,23 +234,32 @@ const minDeadlineDate = computed(() => {
 
 // Filter actors by selected role GUID
 const availableUsers = computed(() => {
+  console.log('[CreateWorkStepForm] availableUsers computed - actors:', actors.value.length, 'selectedRoleGuid:', selectedRoleGuid.value)
+  
   // If no role is selected, show all actors
   if (!selectedRoleGuid.value) {
-    return actors.value.map((actor) => ({
+    const allUsers = actors.value.map((actor) => ({
       id: actor.guid,
       username: actor.displayName,
       email: `${actor.displayName}@example.com`,
       role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
       tenantId: undefined,
     }))
+    console.log('[CreateWorkStepForm] No role selected, showing all users:', allUsers.length)
+    return allUsers
   }
   
   // Filter actors that have the selected role
-  return actors.value
+  const filteredUsers = actors.value
     .filter((actor) => {
-      if (!actor.role) return false
+      if (!actor.role) {
+        console.log('[CreateWorkStepForm] Actor has no role:', actor.displayName)
+        return false
+      }
       // Check if actor's role GUID matches the selected role GUID
-      return actor.role.guid === selectedRoleGuid.value
+      const matches = actor.role.guid === selectedRoleGuid.value
+      console.log('[CreateWorkStepForm] Actor role check:', actor.displayName, 'role.guid:', actor.role.guid, 'selectedRoleGuid:', selectedRoleGuid.value, 'matches:', matches)
+      return matches
     })
     .map((actor) => ({
       id: actor.guid,
@@ -248,10 +268,22 @@ const availableUsers = computed(() => {
       role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
       tenantId: undefined,
     }))
+  
+  console.log('[CreateWorkStepForm] Filtered users for role:', filteredUsers.length)
+  return filteredUsers
 })
 
 onMounted(async () => {
-  await Promise.all([loadActors(), loadRoles()])
+  console.log('[CreateWorkStepForm] onMounted - loading actors and roles...')
+  try {
+    await Promise.all([loadActors(), loadRoles()])
+    console.log('[CreateWorkStepForm] Loaded actors:', actors.value.length, 'roles:', roles.value.length)
+    console.log('[CreateWorkStepForm] Actors:', actors.value)
+    console.log('[CreateWorkStepForm] Roles:', roles.value)
+  } catch (err) {
+    console.error('[CreateWorkStepForm] Error loading actors/roles:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to load actors or roles'
+  }
 })
 
 // Watch for role GUID changes and update available users

@@ -196,6 +196,9 @@ export const useWorkStepStore = defineStore('workStep', () => {
     getWorkStepsByWorkflow,
     getWorkflowForStep,
     getAssignedWorkSteps,
+    
+    // Priority calculation
+    calculatePriority,
   }
 })
 

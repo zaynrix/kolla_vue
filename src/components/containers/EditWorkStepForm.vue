@@ -33,64 +33,32 @@
         />
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="step-duration" class="form-label">Duration (hours) *</label>
-          <input
-            id="step-duration"
-            v-model.number="formData.duration"
-            type="number"
-            class="form-input"
-            required
-            min="1"
-            step="1"
-            placeholder="e.g., 8"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="step-sequence" class="form-label">Sequence Number *</label>
-          <input
-            id="step-sequence"
-            v-model.number="formData.sequenceNumber"
-            type="number"
-            class="form-input"
-            required
-            min="1"
-            step="1"
-            placeholder="e.g., 1"
-          />
-        </div>
+      <div class="form-group">
+        <label for="step-duration" class="form-label">Duration (hours) *</label>
+        <input
+          id="step-duration"
+          v-model.number="formData.duration"
+          type="number"
+          class="form-input"
+          required
+          min="1"
+          step="1"
+          placeholder="e.g., 8"
+        />
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="step-status" class="form-label">Status *</label>
-          <select
-            id="step-status"
-            v-model="formData.status"
-            class="form-select"
-            required
-          >
-            <option :value="TaskStatus.PENDING">To Do</option>
-            <option :value="TaskStatus.IN_PROGRESS">In Progress</option>
-            <option :value="TaskStatus.COMPLETED">Done</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="step-priority" class="form-label">Priority *</label>
-          <select
-            id="step-priority"
-            v-model="formData.manualPriority"
-            class="form-select"
-            required
-          >
-            <option :value="Priority.SHORT_TERM">Short Term (Urgent)</option>
-            <option :value="Priority.MID_TERM">Mid Term</option>
-            <option :value="Priority.LONG_TERM">Long Term</option>
-          </select>
-        </div>
+      <div class="form-group">
+        <label for="step-status" class="form-label">Status *</label>
+        <select
+          id="step-status"
+          v-model="formData.status"
+          class="form-select"
+          required
+        >
+          <option :value="TaskStatus.PENDING">To Do</option>
+          <option :value="TaskStatus.IN_PROGRESS">In Progress</option>
+          <option :value="TaskStatus.COMPLETED">Done</option>
+        </select>
       </div>
 
       <div class="form-row">
@@ -196,7 +164,7 @@ import { useActor } from '@/composables/useActor'
 import { useRole } from '@/composables/useRole'
 import { useAssignment } from '@/composables/useAssignment'
 import type { UpdateWorkStepRequest } from '@/types/api'
-import { Role, TaskStatus, Priority } from '@/types/domain'
+import { Role, TaskStatus } from '@/types/domain'
 import type { WorkStep } from '@/types/domain'
 
 interface Props {
@@ -223,20 +191,16 @@ const formData = ref<{
   title: string
   description?: string
   duration: number
-  sequenceNumber: number
   requiredRole: Role
   status: TaskStatus
-  manualPriority: Priority
   startDate?: string
   deadlineDate?: string
 }>({
   title: '',
   description: '',
   duration: 8,
-  sequenceNumber: 1,
   requiredRole: Role.TEAM_MEMBER,
   status: TaskStatus.PENDING,
-  manualPriority: Priority.SHORT_TERM,
   startDate: undefined,
   deadlineDate: undefined,
 })
@@ -328,12 +292,10 @@ watch(
         title: workStep.title,
         description: workStep.description || '',
         duration: workStep.duration,
-        sequenceNumber: workStep.sequenceNumber,
         requiredRole: workStep.requiredRole,
         status: workStep.status,
-        manualPriority: workStep.manualPriority || workStep.priority,
-        startDate: workStep.createdAt ? formatDateForInput(workStep.createdAt) : undefined,
-        deadlineDate: undefined, // WorkStep doesn't have deadlineDate directly, would need to get from workflow
+        startDate: workStep.startDate ? formatDateForInput(workStep.startDate) : undefined,
+        deadlineDate: workStep.deadlineDate ? formatDateForInput(workStep.deadlineDate) : undefined,
       }
 
       // Find and set the role GUID that matches the workStep's requiredRole
@@ -454,8 +416,33 @@ async function handleSubmit() {
       updateRequest.description = formData.value.description
     }
 
-    // Note: Duration is not directly updatable via the Assignment API
-    // It's calculated or set during creation
+    // Only update duration if it changed
+    // Note: Duration is calculated from startDate and deadlineDate, but we allow manual override
+    if (formData.value.duration !== originalWorkStep.value.duration) {
+      updateRequest.duration = formData.value.duration
+    }
+
+    // Only update start date if it changed
+    const originalStartDate = originalWorkStep.value.startDate 
+      ? formatDateForInput(originalWorkStep.value.startDate)
+      : undefined
+    const currentStartDate = formData.value.startDate || undefined
+    if (currentStartDate !== originalStartDate) {
+      updateRequest.startDate = currentStartDate 
+        ? formatDateForAPI(currentStartDate)
+        : null
+    }
+
+    // Only update deadline date if it changed
+    const originalDeadlineDate = originalWorkStep.value.deadlineDate
+      ? formatDateForInput(originalWorkStep.value.deadlineDate)
+      : undefined
+    const currentDeadlineDate = formData.value.deadlineDate || undefined
+    if (currentDeadlineDate !== originalDeadlineDate) {
+      updateRequest.deadlineDate = currentDeadlineDate
+        ? formatDateForAPI(currentDeadlineDate)
+        : null
+    }
 
     // Only update status if it changed
     if (formData.value.status !== originalWorkStep.value.status) {
@@ -467,11 +454,8 @@ async function handleSubmit() {
       }
     }
 
-    // Only update priority if it changed
-    const originalPriority = originalWorkStep.value.manualPriority || originalWorkStep.value.priority
-    if (formData.value.manualPriority !== originalPriority) {
-      updateRequest.manualPriority = formData.value.manualPriority
-    }
+    // Priority is automatically calculated by the backend based on workflow deadline and duration
+    // No manual priority updates allowed
 
     // Only update assignees if they changed
     // Normalize arrays for comparison (sort to ensure order doesn't matter)
@@ -505,17 +489,25 @@ async function handleSubmit() {
 
     // Only call update if there are changes
     if (Object.keys(updateRequest).length > 0) {
+      console.log('[EditWorkStepForm] Updating work step:', props.workStep.id, 'with changes:', updateRequest)
       await updateWorkStep(props.workStep.id, updateRequest)
+      console.log('[EditWorkStepForm] Update successful')
+    } else {
+      console.log('[EditWorkStepForm] No changes detected, skipping update')
     }
 
     // Update the required role if it has changed
-    if (selectedRoleGuid.value !== originalRoleGuid.value) {
+    if (selectedRoleGuid.value !== originalRoleGuid.value && selectedRoleGuid.value) {
+      console.log('[EditWorkStepForm] Updating required role:', selectedRoleGuid.value)
       await updateRequiredRole(props.workStep.id, selectedRoleGuid.value)
     }
 
+    // Emit updated event to trigger reload in parent component
     emit('updated', props.workStep.id)
   } catch (err) {
+    console.error('[EditWorkStepForm] Update error:', err)
     error.value = err instanceof Error ? err.message : 'Failed to update work step'
+    throw err // Re-throw to prevent form from closing on error
   }
 }
 </script>

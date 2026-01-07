@@ -43,6 +43,8 @@ export interface UpdateWorkStepRequest {
   assignedTo?: string | string[] // Support single or multiple user assignments
   manualPriority?: Priority
   completedAt?: string // ISO date string
+  startDate?: string | null // ISO date string
+  deadlineDate?: string | null // ISO date string
 }
 
 export interface CreateWorkflowRequest {

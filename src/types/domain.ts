@@ -49,6 +49,8 @@ export interface WorkStep {
   completedAt?: Date
   createdAt: Date
   updatedAt: Date
+  startDate?: Date // Start date for the assignment
+  deadlineDate?: Date // Deadline date for the assignment
   // Manual priority override by workflow manager
   manualPriority?: Priority
 }

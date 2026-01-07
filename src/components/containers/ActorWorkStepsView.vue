@@ -25,15 +25,6 @@
         :assigned-users-map="assignedUsersMap"
         :workflow-deadline="getWorkflowDeadline(workStep.workflowId)"
       >
-        <template #actions="{ workStep }">
-          <button
-            v-if="canManage"
-            @click="handleSetPriority(workStep.id)"
-            class="btn btn--secondary btn--small"
-          >
-            Change Priority
-          </button>
-        </template>
       </WorkStepCard>
     </div>
   </div>
@@ -46,6 +37,7 @@ import { useWorkflowManager } from '@/composables/useWorkflowManager'
 import { useAuthorization } from '@/composables/useAuthorization'
 import { useWorkflow } from '@/composables/useWorkflow'
 import { useActor } from '@/composables/useActor'
+import { useWorkStepStore } from '@/stores/workStep'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
 import type { WorkStep, User } from '@/types/domain'
 import { Priority } from '@/types/domain'
@@ -60,7 +52,7 @@ const props = defineProps<Props>()
 
 const { workSteps, loadWorkSteps } = useWorkStep()
 const { workflows } = useWorkflow()
-const { setManualPriority } = useWorkflowManager()
+// Priority is automatically calculated - no manual priority management needed
 const { canManageWorkflow } = useAuthorization()
 const { actors, loadActors, getActor } = useActor()
 
@@ -123,7 +115,11 @@ const canManage = computed(() => {
 })
 
 function getPriorityForStep(workStep: WorkStep): Priority {
-  return workStep.manualPriority || workStep.priority
+  // Priority should be calculated based on remaining duration of ALL remaining work steps
+  // Use the calculated priority from the store instead of the backend priority
+  const workStepStore = useWorkStepStore()
+  const now = new Date()
+  return workStep.manualPriority || workStepStore.calculatePriority(workStep, now)
 }
 
 function isUrgentStep(workStep: WorkStep): boolean {
@@ -145,29 +141,8 @@ function getWorkflowDeadline(workflowId: string): Date | undefined {
   return workflow?.deadline
 }
 
-async function handleSetPriority(workStepId: string) {
-  const priorities: Priority[] = [
-    Priority.SHORT_TERM,
-    Priority.MID_TERM,
-    Priority.LONG_TERM,
-  ]
-  const workStep = filteredWorkSteps.value.find((ws) => ws.id === workStepId)
-  if (!workStep) return
-
-  const currentPriority = getPriorityForStep(workStep)
-  const currentIndex = priorities.indexOf(currentPriority)
-  if (currentIndex === -1) return
-
-  const nextPriority = priorities[(currentIndex + 1) % priorities.length]
-  if (!nextPriority) return
-
-  try {
-    await setManualPriority(workStepId, nextPriority)
-    await loadWorkSteps() // Reload to get updated priority
-  } catch (err) {
-    console.error('Failed to set priority:', err)
-  }
-}
+// Priority is automatically calculated by the backend based on workflow deadline and duration
+// Manual priority changes are not allowed
 </script>
 
 <style scoped>

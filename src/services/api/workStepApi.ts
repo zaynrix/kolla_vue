@@ -179,20 +179,33 @@ export class WorkStepApiService {
 
   async updateWorkStep(
     id: string,
-    request: UpdateWorkStepRequest
+    request: UpdateWorkStepRequest,
+    originalWorkStep?: WorkStep
   ): Promise<WorkStep> {
+    console.log('[WorkStepApi] updateWorkStep called with:', { id, request, originalWorkStep })
+    
+    // Fetch current assignment to get workflowId and sequenceNumber context
+    let currentAssignment: AssignmentDto | null = null
+    try {
+      currentAssignment = await this.apiClient.get<AssignmentDto>(`/Assignment/Get/${id}`)
+      console.log('[WorkStepApi] Current assignment:', currentAssignment)
+    } catch (err) {
+      console.warn('[WorkStepApi] Could not fetch current assignment before update:', err)
+    }
+    
     // Update Assignment using multiple PATCH calls
     if (request.title) {
+      console.log('[WorkStepApi] Updating title:', request.title)
       await this.apiClient.patch<void>(
         `/Assignment/SetDisplayName`,
-        { Guid: id, DisplayName: request.title }
+        { guid: id, DisplayName: request.title }
       )
     }
     
     if (request.description !== undefined) {
       await this.apiClient.patch<void>(
         `/Assignment/SetDescription`,
-        { Guid: id, Description: request.description ?? null }
+        { guid: id, Description: request.description ?? null }
       )
     }
     
@@ -200,35 +213,56 @@ export class WorkStepApiService {
       const assigneeGuid = Array.isArray(request.assignedTo) ? request.assignedTo[0] : request.assignedTo
       await this.apiClient.patch<void>(
         `/Assignment/SetAssignee`,
-        { Guid: id, AssigneeGuid: assigneeGuid ?? null }
+        { guid: id, AssigneeGuid: assigneeGuid ?? null }
       )
     }
     
     if (request.status !== undefined) {
       await this.apiClient.patch<void>(
         `/Assignment/SetStatus`,
-        { Guid: id, assignmentStatus: mapStatusToBackend(request.status) }
+        { guid: id, assignmentStatus: mapStatusToBackend(request.status) }
       )
     }
     
     if (request.manualPriority !== undefined) {
       await this.apiClient.patch<void>(
         `/Assignment/SetPriority`,
-        { Guid: id, priority: mapPriorityToBackend(request.manualPriority) }
+        { guid: id, priority: mapPriorityToBackend(request.manualPriority) }
       )
     }
+    
+    // Update start date if provided
+    if (request.startDate !== undefined) {
+      await this.assignmentService.setAssignmentStartDate(id, request.startDate)
+    }
+    
+    // Update deadline date if provided
+    if (request.deadlineDate !== undefined) {
+      await this.assignmentService.setAssignmentDeadlineDate(id, request.deadlineDate)
+    }
+    
+    // Note: Duration is not directly updatable via the Assignment API
+    // It's a calculated field based on startDate and deadlineDate
+    // If duration needs to be updated, it would need to be calculated from dates
     
     // Fetch updated assignment
     const assignment = await this.apiClient.get<AssignmentDto>(
       `/Assignment/Get/${id}`
     )
     
-    // Map back to WorkStep (requires workflowId and sequenceNumber from context)
-    // In real implementation, these should be stored or fetched
+    // Map back to WorkStep - preserve original workflowId and sequenceNumber if available
+    // Priority: originalWorkStep > currentAssignment > assignment.parentObjectiveGuid
+    const workflowId = originalWorkStep?.workflowId 
+      || (currentAssignment?.parentObjectiveGuid) 
+      || assignment.parentObjectiveGuid 
+      || 'default-workflow'
+    
+    const sequenceNumber = originalWorkStep?.sequenceNumber || 1
+    
     return mapAssignmentToWorkStep(
       assignment,
-      assignment.parentObjectiveGuid || 'default-workflow', // Should come from context
-      1, // Should come from context
+      workflowId,
+      sequenceNumber,
       (assignment.requiredRoleGuid as any) || 'TEAM_MEMBER'
     )
   }

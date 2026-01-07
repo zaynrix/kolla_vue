@@ -99,14 +99,6 @@
               </button>
               <button
                 v-if="canManage"
-                @click="handleSetPriority(workStep.id)"
-                class="btn btn--secondary btn--small"
-                title="Change priority"
-              >
-                ⚡ Priority
-              </button>
-              <button
-                v-if="canManage"
                 @click="handleDelete(workStep.id)"
                 class="btn btn--danger btn--small"
                 title="Delete work step"
@@ -169,6 +161,7 @@ import EditWorkStepForm from './EditWorkStepForm.vue'
 import EditWorkflowForm from './EditWorkflowForm.vue'
 import ActorWorkStepsView from './ActorWorkStepsView.vue'
 import { useActor } from '@/composables/useActor'
+import { useWorkStepStore } from '@/stores/workStep'
 import type { WorkStep, Priority, User } from '@/types/domain'
 import { Priority as PriorityEnum } from '@/types/domain'
 
@@ -186,7 +179,7 @@ const emit = defineEmits<{
 
 const { workflows, loadWorkflows, deleteWorkflow } = useWorkflow()
 const { workSteps, loadWorkSteps: reloadWorkSteps, deleteWorkStep } = useWorkStep()
-const { getWorkflowProgress, setManualPriority } = useWorkflowManager()
+const { getWorkflowProgress } = useWorkflowManager()
 const { canManageWorkflow: checkCanManageWorkflow } = useAuthorization()
 const { completeWorkStep, loadWorkSteps } = useWorkStep()
 const { actors, loadActors } = useActor()
@@ -220,7 +213,11 @@ onMounted(async () => {
 })
 
 function getPriorityForStep(workStep: WorkStep): Priority {
-  return workStep.manualPriority || workStep.priority
+  // Priority should be calculated based on remaining duration of ALL remaining work steps
+  // Use the calculated priority from the store instead of the backend priority
+  const workStepStore = useWorkStepStore()
+  const now = new Date()
+  return workStep.manualPriority || workStepStore.calculatePriority(workStep, now)
 }
 
 function isUrgentStep(workStep: WorkStep): boolean {
@@ -257,26 +254,8 @@ async function handleComplete(workStepId: string) {
   }
 }
 
-async function handleSetPriority(workStepId: string) {
-  const priorities: Priority[] = [PriorityEnum.SHORT_TERM, PriorityEnum.MID_TERM, PriorityEnum.LONG_TERM]
-  const workStep = workflowWorkSteps.value.find((ws) => ws.id === workStepId)
-  if (!workStep) return
-  
-  const currentPriority = getPriorityForStep(workStep)
-  const currentIndex = priorities.indexOf(currentPriority)
-  if (currentIndex === -1) return
-  
-  const nextPriority = priorities[(currentIndex + 1) % priorities.length]
-  if (!nextPriority) return
-  
-  try {
-    // setManualPriority updates the store directly, Vue reactivity handles UI updates
-    // No need to reload - the panel will update in real-time
-    await setManualPriority(workStepId, nextPriority)
-  } catch (err) {
-    console.error('Failed to set priority:', err)
-  }
-}
+// Priority is automatically calculated by the backend based on workflow deadline and duration
+// Manual priority changes are not allowed
 
 const canManage = computed(() => {
   return checkCanManageWorkflow(props.workflowId).allowed

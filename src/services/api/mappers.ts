@@ -108,11 +108,23 @@ export function mapAssignmentToWorkStep(
   sequenceNumber: number,
   requiredRole: Role
 ): WorkStep {
+  // Calculate duration from startDate and deadlineDate if available
+  let duration = 8 // Default
+  if (assignment.startDate && assignment.deadlineDate) {
+    const start = new Date(assignment.startDate)
+    const deadline = new Date(assignment.deadlineDate)
+    if (!isNaN(start.getTime()) && !isNaN(deadline.getTime()) && deadline > start) {
+      const diffMs = deadline.getTime() - start.getTime()
+      duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+      if (duration <= 0) duration = 8 // Fallback to default if invalid
+    }
+  }
+  
   return {
     id: assignment.guid,
     title: assignment.displayName,
     description: assignment.description ? assignment.description : undefined,
-    duration: 8, // Default, should be calculated or provided
+    duration,
     status: mapStatusFromBackend(assignment.status),
     priority: mapPriorityFromBackend(assignment.priority),
     workflowId,
@@ -128,6 +140,8 @@ export function mapAssignmentToWorkStep(
       : undefined,
     createdAt: assignment.startDate ? new Date(assignment.startDate) : new Date(),
     updatedAt: new Date(),
+    startDate: assignment.startDate ? new Date(assignment.startDate) : undefined,
+    deadlineDate: assignment.deadlineDate ? new Date(assignment.deadlineDate) : undefined,
   }
 }
 

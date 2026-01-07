@@ -79,6 +79,17 @@ if (typeof window !== 'undefined') {
   const restored = await restoreUser()
   if (restored) {
     console.log('[App] User session restored successfully')
+    
+    // Start SignalR connection for real-time updates
+    try {
+      const { getSignalRService } = await import('@/services/signalr/signalrService')
+      const signalRService = getSignalRService()
+      await signalRService.start()
+      console.log('[App] SignalR connection started')
+    } catch (error) {
+      console.error('[App] Failed to start SignalR connection:', error)
+      // Don't block app startup if SignalR fails
+    }
   }
   app.mount('#app')
 })()

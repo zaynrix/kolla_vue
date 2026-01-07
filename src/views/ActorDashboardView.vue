@@ -756,13 +756,15 @@ async function handleReassigned(workStepId: string) {
   await loadWorkflows()
 }
 
-function handleUpdated(workStepId: string) {
+async function handleUpdated(workStepId: string) {
   // Reload work steps to reflect changes
   if (isAdmin.value) {
-    loadWorkSteps()
+    await loadWorkSteps()
   } else {
-    loadMyWorkSteps()
+    await loadMyWorkSteps()
   }
+  // Also reload workflows to ensure consistency
+  await loadWorkflows()
 }
 
 async function handleCreated(workStepId: string) {
