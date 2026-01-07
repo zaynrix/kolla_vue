@@ -63,8 +63,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { WorkStep, Priority } from '@/types/domain'
-import { Priority as PriorityEnum } from '@/types/domain'
+import type { WorkStep } from '@/types/domain'
+import { Priority } from '@/types/domain'
 
 interface Props {
   workStep: WorkStep
@@ -88,12 +88,12 @@ defineEmits<{
 }>()
 
 const priorityLabel = computed(() => {
-  const labels = {
-    [PriorityEnum.IMMEDIATE]: 'Sofort',
-    [PriorityEnum.MEDIUM_TERM]: 'Mittelfristig',
-    [PriorityEnum.LONG_TERM]: 'Langfristig',
+  const labels: Record<Priority, string> = {
+    [Priority.SHORT_TERM]: 'Sofort',
+    [Priority.MID_TERM]: 'Mittelfristig',
+    [Priority.LONG_TERM]: 'Langfristig',
   }
-  return labels[props.priority] || props.priority
+  return labels[props.priority] || String(props.priority)
 })
 
 const hasAssignments = computed(() => {

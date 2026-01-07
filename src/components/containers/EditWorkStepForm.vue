@@ -460,8 +460,8 @@ async function handleSubmit() {
       updateRequest.assignedTo = currentAssignees.length === 0
         ? undefined
         : currentAssignees.length === 1
-          ? currentAssignees[0]
-          : currentAssignees
+          ? currentAssignees[0]!
+          : currentAssignees.filter((id): id is string => id !== undefined)
     }
 
     // Only call update if there are changes

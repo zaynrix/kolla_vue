@@ -2,11 +2,11 @@
   <button
     @click="toggleTheme"
     class="theme-toggle"
-    :aria-label="theme.value === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
-    :title="theme.value === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+    :aria-label="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
+    :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
   >
     <svg
-      v-if="theme.value === 'light'"
+      v-if="theme === 'light'"
       class="theme-icon theme-icon--sun"
       fill="none"
       stroke="currentColor"

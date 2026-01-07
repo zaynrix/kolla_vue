@@ -399,7 +399,7 @@
       <div class="modal-content-create">
         <CreateWorkStepForm
           :show-form="true"
-          :workflow-id="selectedWorkflowId || (workflows.length > 0 ? workflows[0].id : '')"
+          :workflow-id="selectedWorkflowId || (workflows.length > 0 && workflows[0] ? workflows[0].id : '')"
           @close="showCreateModal = false"
           @created="handleCreated"
         />
@@ -517,14 +517,16 @@ onMounted(async () => {
   // Set current user if not set (use first actor as default)
   if (!currentUser.value && actors.value.length > 0) {
     const firstActor = actors.value[0]
-    setCurrentUser({
-      id: firstActor.guid,
-      username: firstActor.displayName,
-      email: `${firstActor.displayName}@example.com`,
-      role: (firstActor.role?.isAdmin ? 'ADMIN' : 'TEAM_MEMBER') as any,
-      tenantId: undefined,
-    })
-    selectedUserId.value = firstActor.guid
+    if (firstActor) {
+      setCurrentUser({
+        id: firstActor.guid,
+        username: firstActor.displayName,
+        email: `${firstActor.displayName}@example.com`,
+        role: (firstActor.role?.isAdmin ? 'ADMIN' : 'TEAM_MEMBER') as any,
+        tenantId: undefined,
+      })
+      selectedUserId.value = firstActor.guid
+    }
   } else if (currentUser.value) {
     selectedUserId.value = currentUser.value.id
   }
@@ -708,7 +710,7 @@ function handleCreated(workStepId: string) {
     loadWorkSteps()
   }
   showCreateModal.value = false
-  selectedWorkflowId.value = workflows.value.length > 0 ? workflows.value[0].id : ''
+  selectedWorkflowId.value = workflows.value.length > 0 && workflows.value[0] ? workflows.value[0].id : ''
 }
 
 async function handleDelete(workStepId: string) {

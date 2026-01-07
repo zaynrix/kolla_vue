@@ -63,11 +63,11 @@ export const useObjectiveStore = defineStore('objective', () => {
    */
   const objectivesByPriority = computed(() => {
     return {
-      [Priority.IMMEDIATE]: objectives.value.filter(
-        (obj) => obj.priority === Priority.IMMEDIATE
+      [Priority.SHORT_TERM]: objectives.value.filter(
+        (obj) => obj.priority === Priority.SHORT_TERM
       ),
-      [Priority.MEDIUM_TERM]: objectives.value.filter(
-        (obj) => obj.priority === Priority.MEDIUM_TERM
+      [Priority.MID_TERM]: objectives.value.filter(
+        (obj) => obj.priority === Priority.MID_TERM
       ),
       [Priority.LONG_TERM]: objectives.value.filter(
         (obj) => obj.priority === Priority.LONG_TERM

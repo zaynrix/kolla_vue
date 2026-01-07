@@ -197,13 +197,15 @@ onMounted(async () => {
   if (!currentUser.value && actors.value.length > 0) {
     const adminActor = actors.value.find(a => a.role?.isAdmin)
     const firstActor = adminActor || actors.value[0]
-    setCurrentUser({
-      id: firstActor.guid,
-      username: firstActor.displayName,
-      email: `${firstActor.displayName}@example.com`,
-      role: (firstActor.role?.isAdmin ? 'ADMIN' : 'WORKFLOW_MANAGER') as any,
-      tenantId: undefined,
-    })
+    if (firstActor) {
+      setCurrentUser({
+        id: firstActor.guid,
+        username: firstActor.displayName,
+        email: `${firstActor.displayName}@example.com`,
+        role: (firstActor.role?.isAdmin ? 'ADMIN' : 'WORKFLOW_MANAGER') as any,
+        tenantId: undefined,
+      })
+    }
   }
   
   await loadWorkflows()

@@ -60,8 +60,8 @@ export function useObjective() {
     loading.value = true
     error.value = null
     try {
-      // Backend uses GetObjectiveAssignments for workflow objectives
-      const objective = await api.objective.getObjectiveAssignments(workflowId)
+      // Backend uses GetObjective for workflow objectives
+      const objective = await api.objective.getObjective(workflowId)
       // Map to Objective domain model
       objectiveStore.setObjectives([{
         id: objective.guid,
@@ -197,9 +197,9 @@ export function useObjective() {
    */
   const prioritizedObjectives = computed(() => {
     return [...objectiveStore.objectives].sort((a, b) => {
-      const priorityOrder = {
-        [Priority.IMMEDIATE]: 0,
-        [Priority.MEDIUM_TERM]: 1,
+      const priorityOrder: Record<Priority, number> = {
+        [Priority.SHORT_TERM]: 0,
+        [Priority.MID_TERM]: 1,
         [Priority.LONG_TERM]: 2,
       }
 

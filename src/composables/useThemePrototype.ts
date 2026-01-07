@@ -46,7 +46,7 @@ const themePrototypes: ThemePrototype[] = [
   }
 ]
 
-const currentPrototype = ref<ThemePrototype>(themePrototypes[0])
+const currentPrototype = ref<ThemePrototype | undefined>(themePrototypes[0])
 
 export function useThemePrototype() {
   const prototypes = computed(() => themePrototypes)
@@ -100,7 +100,9 @@ export function useThemePrototype() {
     }
     
     // Fallback to default
-    applyPrototype(themePrototypes[0])
+    if (themePrototypes[0]) {
+      applyPrototype(themePrototypes[0])
+    }
   }
 
   return {

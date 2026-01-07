@@ -123,20 +123,20 @@
       <div class="actors-list">
         <div
           v-for="actor in assignedActors"
-          :key="actor.id"
+          :key="actor.guid"
           class="actor-item"
-          @click="selectedActorId = selectedActorId === actor.id ? null : actor.id"
+          @click="selectedActorId = selectedActorId === actor.guid ? null : actor.guid"
         >
           <div class="actor-info">
-            <span class="actor-name">{{ actor.username }}</span>
-            <span class="actor-role">{{ actor.role }}</span>
+            <span class="actor-name">{{ actor.displayName }}</span>
+            <span class="actor-role">{{ actor.role?.displayName || 'No role' }}</span>
             <span class="actor-steps-count">
-              {{ getActorWorkStepsCount(actor.id) }} steps
+              {{ getActorWorkStepsCount(actor.guid) }} steps
             </span>
           </div>
           <ActorWorkStepsView
-            v-if="selectedActorId === actor.id"
-            :actor-id="actor.id"
+            v-if="selectedActorId === actor.guid"
+            :actor-id="actor.guid"
             :workflow-id="workflowId"
             class="actor-details"
           />

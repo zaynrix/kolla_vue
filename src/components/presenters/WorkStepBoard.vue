@@ -295,8 +295,9 @@ function handleDragOver(status: TaskStatus, event: DragEvent) {
 
 function handleDragLeave(status: TaskStatus, event: DragEvent) {
   // Check if we're actually leaving the column (not just entering a child)
-  const relatedTarget = event.relatedTarget as HTMLElement
-  if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
+  const relatedTarget = event.relatedTarget as HTMLElement | null
+  const currentTarget = event.currentTarget as HTMLElement | null
+  if (!relatedTarget || !currentTarget || !currentTarget.contains(relatedTarget)) {
     if (dragOverColumn.value === status) {
       dragOverColumn.value = null
     }

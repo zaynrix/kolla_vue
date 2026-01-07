@@ -46,8 +46,8 @@ import { useAuthorization } from '@/composables/useAuthorization'
 import { useWorkflow } from '@/composables/useWorkflow'
 import { useActor } from '@/composables/useActor'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
-import type { WorkStep, Priority, User } from '@/types/domain'
-import { Priority as PriorityEnum } from '@/types/domain'
+import type { WorkStep, User } from '@/types/domain'
+import { Priority } from '@/types/domain'
 import type { ActorDto } from '@/types/api'
 
 interface Props {
@@ -102,10 +102,10 @@ const sortedWorkSteps = computed(() => {
     // Sort by priority first, then by sequence number
     const aPriority = getPriorityForStep(a)
     const bPriority = getPriorityForStep(b)
-    const priorityOrder = {
-      [PriorityEnum.IMMEDIATE]: 0,
-      [PriorityEnum.MEDIUM_TERM]: 1,
-      [PriorityEnum.LONG_TERM]: 2,
+    const priorityOrder: Record<Priority, number> = {
+      [Priority.SHORT_TERM]: 0,
+      [Priority.MID_TERM]: 1,
+      [Priority.LONG_TERM]: 2,
     }
     const aPriorityValue = priorityOrder[aPriority] ?? 2
     const bPriorityValue = priorityOrder[bPriority] ?? 2
@@ -127,7 +127,7 @@ function getPriorityForStep(workStep: WorkStep): Priority {
 
 function isUrgentStep(workStep: WorkStep): boolean {
   const priority = getPriorityForStep(workStep)
-  return priority === PriorityEnum.IMMEDIATE
+  return priority === Priority.SHORT_TERM
 }
 
 function isDeadlineApproachingStep(workStep: WorkStep): boolean {
@@ -141,9 +141,9 @@ function isDeadlineApproachingStep(workStep: WorkStep): boolean {
 
 async function handleSetPriority(workStepId: string) {
   const priorities: Priority[] = [
-    PriorityEnum.IMMEDIATE,
-    PriorityEnum.MEDIUM_TERM,
-    PriorityEnum.LONG_TERM,
+    Priority.SHORT_TERM,
+    Priority.MID_TERM,
+    Priority.LONG_TERM,
   ]
   const workStep = filteredWorkSteps.value.find((ws) => ws.id === workStepId)
   if (!workStep) return

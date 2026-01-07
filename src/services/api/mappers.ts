@@ -111,7 +111,7 @@ export function mapAssignmentToWorkStep(
   return {
     id: assignment.guid,
     title: assignment.displayName,
-    description: assignment.description,
+    description: assignment.description ?? undefined,
     duration: 8, // Default, should be calculated or provided
     status: mapStatusFromBackend(assignment.status),
     priority: mapPriorityFromBackend(assignment.priority),
@@ -140,7 +140,9 @@ export function mapWorkStepToAssignment(workStep: WorkStep): Partial<AssignmentD
     displayName: workStep.title,
     description: workStep.description,
     deadlineDate: workStep.workflowId ? undefined : undefined, // Would need workflow deadline
-    assigneeGuid: workStep.assignedTo,
+    assigneeGuid: workStep.assignedTo 
+      ? (Array.isArray(workStep.assignedTo) ? workStep.assignedTo[0] : workStep.assignedTo)
+      : null,
     requiredRoleGuid: workStep.requiredRole,
     priority: mapPriorityToBackend(workStep.manualPriority || workStep.priority),
     status: mapStatusToBackend(workStep.status),
