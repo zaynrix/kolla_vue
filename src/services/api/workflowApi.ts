@@ -91,7 +91,8 @@ export class WorkflowApiService {
           const parsed = JSON.parse(response)
           objectiveGuid = parsed.guid || response
         } catch {
-          objectiveGuid = String(response).trim().replace(/^["']|["']$/g, '')
+          const responseStr = String(response)
+          objectiveGuid = responseStr.trim().replace(/^["']|["']$/g, '')
         }
       } else {
         throw new Error('Unexpected response format from Objective/Create')

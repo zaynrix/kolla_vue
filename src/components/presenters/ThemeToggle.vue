@@ -37,9 +37,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 
-const { theme, toggleTheme } = useTheme()
+const { theme: themeRef, toggleTheme } = useTheme()
+const theme = computed(() => themeRef.value)
 </script>
 
 <style scoped>

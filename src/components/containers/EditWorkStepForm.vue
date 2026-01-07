@@ -457,11 +457,12 @@ async function handleSubmit() {
       originalAssigneesArray.some((id, index) => id !== currentAssignees[index])
     
     if (assigneesChanged) {
-      updateRequest.assignedTo = currentAssignees.length === 0
+      const filteredAssignees = currentAssignees.filter((id): id is string => id !== undefined)
+      updateRequest.assignedTo = filteredAssignees.length === 0
         ? undefined
-        : currentAssignees.length === 1
-          ? currentAssignees[0]!
-          : currentAssignees.filter((id): id is string => id !== undefined)
+        : filteredAssignees.length === 1
+          ? filteredAssignees[0]!
+          : filteredAssignees
     }
 
     // Only call update if there are changes

@@ -301,8 +301,8 @@ async function handleSubmit() {
     }
 
     // Format dates to ISO string for API
-    const formatDateForAPI = (dateString: string | null | undefined): string | null => {
-      if (!dateString) return null
+    const formatDateForAPI = (dateString: string | null | undefined): string | undefined => {
+      if (!dateString) return undefined
       return new Date(dateString).toISOString()
     }
 

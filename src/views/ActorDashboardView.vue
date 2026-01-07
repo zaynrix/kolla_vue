@@ -399,7 +399,7 @@
       <div class="modal-content-create">
         <CreateWorkStepForm
           :show-form="true"
-          :workflow-id="selectedWorkflowId || (workflows.length > 0 && workflows[0] ? workflows[0].id : '')"
+          :workflow-id="selectedWorkflowId || (workflows.length > 0 && workflows[0]?.id ? workflows[0].id : '')"
           @close="showCreateModal = false"
           @created="handleCreated"
         />

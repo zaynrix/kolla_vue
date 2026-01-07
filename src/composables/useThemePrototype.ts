@@ -59,7 +59,8 @@ export function useThemePrototype() {
     themePrototypes.filter(t => t.variant === 'dark')
   )
 
-  const setPrototype = (prototype: ThemePrototype) => {
+  const setPrototype = (prototype: ThemePrototype | undefined) => {
+    if (!prototype) return
     currentPrototype.value = prototype
     applyPrototype(prototype)
   }
@@ -100,8 +101,9 @@ export function useThemePrototype() {
     }
     
     // Fallback to default
-    if (themePrototypes[0]) {
-      applyPrototype(themePrototypes[0])
+    const defaultPrototype = themePrototypes[0]
+    if (defaultPrototype) {
+      applyPrototype(defaultPrototype)
     }
   }
 
