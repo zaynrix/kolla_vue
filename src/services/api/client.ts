@@ -51,9 +51,18 @@ export class ApiClient {
             throw { message: 'Request timeout', status: 408 } as ApiError
           }
           if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError') || fetchError.message.includes('CORS')) {
-            const errorMessage = fetchError.message.includes('CORS') 
-              ? 'CORS error: The backend server needs to allow requests from this origin. Please configure CORS on the backend to allow http://localhost:5174'
-              : 'Network error: Unable to connect to server. Please check your internet connection and ensure the backend is running at https://kolla-cdb6b0d315ac.herokuapp.com'
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'unknown'
+            const isCorsError = fetchError.message.includes('CORS') || 
+                               (typeof window !== 'undefined' && window.location.protocol === 'https:')
+            
+            let errorMessage: string
+            if (isCorsError) {
+              errorMessage = `CORS Error: The backend server at https://kolla-cdb6b0d315ac.herokuapp.com is not configured to allow requests from ${currentOrigin}. ` +
+                           `Please configure the backend CORS settings to allow requests from this origin. ` +
+                           `The backend needs to include '${currentOrigin}' in its Access-Control-Allow-Origin header.`
+            } else {
+              errorMessage = 'Network error: Unable to connect to server. Please check your internet connection and ensure the backend is running at https://kolla-cdb6b0d315ac.herokuapp.com'
+            }
             throw { message: errorMessage, status: 0 } as ApiError
           }
         }

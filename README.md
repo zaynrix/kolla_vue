@@ -23,6 +23,12 @@ TypeScript cannot handle type information for `.vue` imports by default, so we r
 
 See [Vite Configuration Reference](https://vite.dev/config/).
 
+## CORS Configuration for Production
+
+When deploying to GitHub Pages or other domains, you may encounter CORS errors when accessing the backend API. See [CORS_SETUP.md](./CORS_SETUP.md) for detailed instructions on configuring CORS on the backend server.
+
+**Quick fix**: The backend at `https://kolla-cdb6b0d315ac.herokuapp.com` needs to allow requests from your frontend domain (e.g., `https://zaynrix.github.io`).
+
 ## Project Setup
 
 ```sh
