@@ -1,8 +1,12 @@
 # CORS Configuration Guide
 
-## Problem
+## ⚠️ IMPORTANT: This is a BACKEND Configuration Issue
+
+**The CORS error must be fixed on the BACKEND server, not the frontend.**
 
 When deploying the frontend to GitHub Pages (or any other domain), you may encounter CORS (Cross-Origin Resource Sharing) errors when trying to access the backend API at `https://kolla-cdb6b0d315ac.herokuapp.com`.
+
+**See [BACKEND_CORS_FIX.md](./BACKEND_CORS_FIX.md) for detailed backend configuration instructions.**
 
 ## Error Message
 

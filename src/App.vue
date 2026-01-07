@@ -104,7 +104,9 @@ watch(() => route.path, () => {
           
           <div class="notification-container">
             <button @click="showNotifications = !showNotifications" class="notification-button" aria-label="Notifications">
-              <span class="notification-icon"></span>
+              <svg class="notification-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
               <NotificationBadge v-if="unreadCount > 0" :count="unreadCount" />
             </button>
             <NotificationPanel v-if="showNotifications" class="notification-dropdown" />
@@ -374,40 +376,33 @@ watch(() => route.path, () => {
 }
 
 .notification-icon {
-  width: 20px;
-  height: 20px;
-  position: relative;
+  width: 24px;
+  height: 24px;
   display: block;
-}
-
-.notification-icon::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-text-inverse);
-  border-radius: 50% 50% 50% 0;
-  transform: translateX(-50%) rotate(-45deg);
-}
-
-.notification-icon::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background: var(--color-text-inverse);
-  border-radius: 50%;
+  color: var(--color-text-inverse);
+  transition: transform var(--transition-base);
 }
 
 .notification-button:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.05);
+}
+
+.notification-button:hover .notification-icon {
+  transform: scale(1.1);
+  animation: ring 0.5s ease-in-out;
+}
+
+@keyframes ring {
+  0%, 100% {
+    transform: rotate(0deg) scale(1.1);
+  }
+  25% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(10deg) scale(1.1);
+  }
 }
 
 .notification-dropdown {
