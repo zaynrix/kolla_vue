@@ -34,8 +34,8 @@
 - [x] Wenn ein Akteur seine Liste gerade offen hat, wird sie bei Änderungen durch den Workflowmanager automatisch aktualisiert.  
 
 ### Benachrichtigungen / Live-Updates (konkret prüfbar)
-- [ ] Wenn während der Workflowmanager einen Workflow ansieht ein Task erledigt wird, bekommt der Workflowmanager eine Benachrichtigung und/oder die Ansicht aktualisiert automatisch.  
-- [ ] Es existiert im System ein Benachrichtigungsmechanismus (z. B. Notification-Bereich, Toast, Badge, Auto-Update-Indikator), der bei relevanten Ereignissen tatsächlich ausgelöst wird.  
+- [x] Wenn während der Workflowmanager einen Workflow ansieht ein Task erledigt wird, bekommt der Workflowmanager eine Benachrichtigung und/oder die Ansicht aktualisiert automatisch.  
+- [x] Es existiert im System ein Benachrichtigungsmechanismus (z. B. Notification-Bereich, Toast, Badge, Auto-Update-Indikator), der bei relevanten Ereignissen tatsächlich ausgelöst wird.  
 
 ### Usability (als UI-Features überprüfbar)
 - [x] Akteur sieht jederzeit Anzahl und Priorisierung seiner offenen Tasks.  
