@@ -46,7 +46,15 @@
             <span class="assigned-users">{{ assignedUsersText }}</span>
           </div>
 
-          <div v-if="workflowDeadline" class="workstep-card__deadline">
+          <div v-if="workStep.deadlineDate" class="workstep-card__deadline">
+            <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="deadline-label">Deadline:</span>
+            <span class="deadline-date">{{ formatDeadline(workStep.deadlineDate) }}</span>
+          </div>
+
+          <div v-if="workflowDeadline" class="workstep-card__deadline workstep-card__deadline--workflow">
             <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -135,37 +143,50 @@ const formattedWorkflowDeadline = computed(() => {
     minute: '2-digit',
   })
 })
+
+function formatDeadline(deadline: Date | string): string {
+  const d = typeof deadline === 'string' ? new Date(deadline) : deadline
+  return d.toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 </script>
 
 <style scoped>
 .workstep-card {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 0;
-  background: white;
-  transition: box-shadow 0.2s;
-  min-height: 280px;
+  background: var(--color-surface);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  min-height: 400px;
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: visible;
 }
 
 .workstep-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
 }
 
 .workstep-card--urgent {
-  border-left: 4px solid #f44336;
+  border-left: 4px solid var(--color-error);
 }
 
 .workstep-card--approaching {
-  border-left: 4px solid #ff9800;
+  border-left: 4px solid var(--color-warning);
 }
 
 .workstep-card--completed {
   opacity: 0.7;
-  background: #f5f5f5;
+  background: var(--color-surface-hover);
 }
 
 .workstep-card__header {
@@ -205,29 +226,31 @@ const formattedWorkflowDeadline = computed(() => {
 
 .priority--short-term,
 .priority--short_term {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 .priority--mid-term,
 .priority--mid_term {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .priority--long-term,
 .priority--long_term {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-light);
+  color: var(--color-info);
 }
 
 .workstep-card__description {
-  color: var(--color-text-secondary, #4a5568);
+  color: var(--color-text-primary, #1a1a1a);
   margin: 0.5rem 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.5;
   flex: 1;
+  overflow: visible;
+  max-height: none;
 }
 
 .workstep-card__meta {
@@ -235,7 +258,7 @@ const formattedWorkflowDeadline = computed(() => {
   gap: 1rem;
   flex-wrap: wrap;
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #4a5568);
+  color: var(--color-text-primary, #1a1a1a);
   margin: 0.5rem 0;
   align-items: center;
 }
@@ -249,23 +272,23 @@ const formattedWorkflowDeadline = computed(() => {
 }
 
 .status--pending {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .status--in_progress {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-light);
+  color: var(--color-info);
 }
 
 .status--completed {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .workstep-card__assigned {
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #4a5568);
+  color: var(--color-text-primary, #1a1a1a);
   margin: 0.5rem 0;
   display: flex;
   flex-wrap: wrap;
@@ -273,14 +296,18 @@ const formattedWorkflowDeadline = computed(() => {
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.4;
+  padding: 0.5rem;
+  background: var(--color-surface, #f5f5f5);
+  border-radius: var(--radius-sm, 4px);
 }
 
 .assigned-label {
   font-weight: 600;
+  color: var(--color-text-primary, #1a1a1a);
 }
 
 .assigned-users {
-  color: var(--color-primary);
+  color: var(--color-primary, #2563eb);
   font-weight: 500;
 }
 
@@ -289,13 +316,21 @@ const formattedWorkflowDeadline = computed(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #dc2626;
+  color: var(--color-error);
   margin: 0.5rem 0;
   padding: 0.5rem;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-md, 6px);
   font-weight: 500;
+  opacity: 0.8;
+}
+
+.workstep-card__deadline--workflow {
+  background: var(--color-info-light);
+  border-color: var(--color-info);
+  color: var(--color-info);
+  opacity: 0.8;
 }
 
 .deadline-icon {
@@ -318,6 +353,7 @@ const formattedWorkflowDeadline = computed(() => {
   margin-top: auto;
   padding-top: var(--spacing-md);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .btn {

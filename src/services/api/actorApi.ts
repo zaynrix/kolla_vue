@@ -1,8 +1,3 @@
-/**
- * Actor API Service
- * Handles all actor-related API calls
- */
-
 import type { ApiClient } from './client'
 import type {
   ActorDto,
@@ -26,7 +21,6 @@ export class ActorApiService {
       DisplayName: request.DisplayName,
     }
     
-    // Only include RoleGuid if it's provided (not undefined)
     if (request.RoleGuid !== undefined && request.RoleGuid !== null && request.RoleGuid !== '') {
       requestBody.RoleGuid = request.RoleGuid
     }

@@ -27,7 +27,7 @@ const router = createRouter({
       path: '/workflow-manager',
       name: 'workflow-manager-dashboard',
       component: () => import('../views/WorkflowManagerDashboardView.vue'),
-      meta: { title: 'Workflow Manager Dashboard', requiresAuth: true, requiresAdmin: false },
+      meta: { title: 'Workflow Manager Dashboard', requiresAuth: true, requiresWorkflowManager: true },
     },
     {
       path: '/workflows',
@@ -158,6 +158,13 @@ router.beforeEach(async (to, from, next) => {
     // Check if route requires admin
     if (to.meta.requiresAdmin && !userStore.isAdmin) {
       // Non-admin users redirected to their dashboard
+      next('/my-work-steps')
+      return
+    }
+    
+    // Check if route requires workflow manager (admin or workflow manager)
+    if (to.meta.requiresWorkflowManager && !userStore.isAdmin && !userStore.isWorkflowManager) {
+      // Non-workflow-manager users redirected to their dashboard
       next('/my-work-steps')
       return
     }

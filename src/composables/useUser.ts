@@ -1,9 +1,3 @@
-/**
- * useUser Composable
- * ViewModel layer - Presentation logic for user management
- * Exposes reactive state and commands for Views
- */
-
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import type { User } from '@/types/domain'
@@ -11,9 +5,6 @@ import type { User } from '@/types/domain'
 export function useUser() {
   const userStore = useUserStore()
 
-  /**
-   * Expose reactive state to Views
-   */
   const currentUser = computed(() => userStore.currentUser)
   const users = computed(() => userStore.users)
   const availableUsers = computed(() => userStore.users)

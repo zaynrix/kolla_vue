@@ -1,9 +1,3 @@
-/**
- * Assignment API Service
- * Complete service for Assignment API endpoints with validation
- * Note: Backend uses "Assignment" terminology, frontend maps to WorkStep
- */
-
 import type { ApiClient } from './client'
 import type {
   AssignmentDto,
@@ -162,7 +156,7 @@ export class AssignmentApiService {
     }
 
     await this.apiClient.patch<void>(`/Assignment/SetStartDate`, {
-      guid: guid,
+      Guid: guid,
       StartDate: formatDate(startDate),
     })
   }
@@ -189,21 +183,21 @@ export class AssignmentApiService {
     }
 
     await this.apiClient.patch<void>(`/Assignment/SetDeadlineDate`, {
-      guid: guid,
+      Guid: guid,
       DeadlineDate: formatDate(deadlineDate),
     })
   }
 
   async setAssignmentAssignee(guid: string, assigneeGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetAssignee`, {
-      guid: guid,
+      Guid: guid,
       AssigneeGuid: assigneeGuid ?? null,
     })
   }
 
   async setAssignmentRequiredRole(guid: string, requiredRoleGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetRequiredRole`, {
-      guid: guid,
+      Guid: guid,
       RequiredRoleGuid: requiredRoleGuid ?? null,
     })
   }
@@ -241,7 +235,7 @@ export class AssignmentApiService {
 
   async setAssignmentParentObjective(guid: string, parentObjectiveGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetParentObjective`, {
-      guid: guid,
+      Guid: guid,
       ParentObjectiveGuid: parentObjectiveGuid ?? null,
     })
   }

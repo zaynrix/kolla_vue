@@ -1,8 +1,3 @@
-/**
- * SignalR Service
- * Handles real-time notifications from backend via SignalR Hub
- */
-
 import * as signalR from '@microsoft/signalr'
 import { useWorkStepStore } from '@/stores/workStep'
 import { defaultApiServices } from '@/services/api/index'
@@ -18,18 +13,10 @@ export class SignalRService {
   private maxReconnectAttempts = 5
   private reconnectDelay = 3000 // 3 seconds
 
-  /**
-   * Get the base URL for SignalR connection
-   */
   private getBaseUrl(): string {
-    // Get base URL from environment or use default
     const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://kolla-cdb6b0d315ac.herokuapp.com'
-    return baseURL.replace(/\/$/, '') // Remove trailing slash
+    return baseURL.replace(/\/$/, '')
   }
-
-  /**
-   * Start SignalR connection
-   */
   async start(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       console.log('[SignalR] Already connected')
@@ -51,13 +38,11 @@ export class SignalRService {
 
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl, {
-          // Enable automatic reconnection
           skipNegotiation: false,
           transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling,
         })
         .withAutomaticReconnect({
           nextRetryDelayInMilliseconds: (retryContext) => {
-            // Exponential backoff: 0s, 2s, 10s, 30s, then 30s
             if (retryContext.previousRetryCount === 0) return 0
             if (retryContext.previousRetryCount === 1) return 2000
             if (retryContext.previousRetryCount === 2) return 10000
@@ -67,23 +52,20 @@ export class SignalRService {
         .configureLogging(signalR.LogLevel.Information)
         .build()
 
-      // Register handlers
       this.registerHandlers()
-
-      // Start connection
       await this.connection.start()
-      console.log('[SignalR] Connected successfully')
+      console.log('[SignalR] Connected successfully - real-time updates enabled')
+      console.log('[SignalR] Connection state:', this.connection.state)
+      console.log('[SignalR] Connection ID:', this.connection.connectionId)
 
       this.reconnectAttempts = 0
       this.isConnecting = false
 
-      // Handle connection events
       this.connection.onclose((error) => {
         console.log('[SignalR] Connection closed', error)
         this.isConnecting = false
         if (error) {
           console.error('[SignalR] Connection closed with error:', error)
-          // Attempt to reconnect
           this.attemptReconnect()
         }
       })
@@ -104,53 +86,42 @@ export class SignalRService {
     }
   }
 
-  /**
-   * Register SignalR message handlers
-   */
   private registerHandlers(): void {
     if (!this.connection) return
 
-    // Handle assignment updates
     this.connection.on('OnAssignmentUpdated', async (assignmentId: string) => {
       console.log('[SignalR] OnAssignmentUpdated received for assignment:', assignmentId)
       await this.handleAssignmentUpdated(assignmentId)
     })
   }
 
-  /**
-   * Handle assignment update notification
-   */
   private async handleAssignmentUpdated(assignmentId: string): Promise<void> {
     try {
-      console.log('[SignalR] Handling assignment update for:', assignmentId)
+      console.log('[SignalR] Real-time update received for assignment:', assignmentId)
+      console.log('[SignalR] This will update all open views automatically via Vue reactivity')
 
-      // Get the work step from store to preserve workflowId and sequenceNumber
       const workStepStore = useWorkStepStore()
       const existingWorkStep = workStepStore.getWorkStepById(assignmentId)
 
       if (existingWorkStep) {
-        // Fetch updated assignment from backend
+        console.log('[SignalR] Fetching updated work step from API...')
         const updatedWorkStep = await defaultApiServices.workStep.getWorkStepById(assignmentId)
         
-        // Preserve workflowId and sequenceNumber from existing work step
         const workStepWithContext: WorkStep = {
           ...updatedWorkStep,
           workflowId: existingWorkStep.workflowId,
           sequenceNumber: existingWorkStep.sequenceNumber,
         }
         
-        // Update existing work step in store
+        console.log('[SignalR] Updating store with new work step data...')
         workStepStore.updateWorkStep(workStepWithContext)
-        console.log('[SignalR] Updated work step in store:', assignmentId)
+        console.log('[SignalR] Store updated successfully - all views should update automatically')
       } else {
-        // If work step doesn't exist in store, fetch it
-        // Note: getWorkStepById might not have full context, so we might need to reload
         try {
           const updatedWorkStep = await defaultApiServices.workStep.getWorkStepById(assignmentId)
           workStepStore.addWorkStep(updatedWorkStep)
           console.log('[SignalR] Added new work step to store:', assignmentId)
         } catch (error) {
-          // If fetching single work step fails, reload all work steps
           console.warn('[SignalR] Failed to fetch single work step, reloading all:', error)
           const allWorkSteps = await defaultApiServices.workStep.getAllWorkSteps()
           workStepStore.setWorkSteps(allWorkSteps)
@@ -159,7 +130,6 @@ export class SignalRService {
       }
     } catch (error) {
       console.error('[SignalR] Error handling assignment update:', error)
-      // Try to reload all work steps as fallback
       try {
         const workStepStore = useWorkStepStore()
         const allWorkSteps = await defaultApiServices.workStep.getAllWorkSteps()
@@ -170,10 +140,6 @@ export class SignalRService {
       }
     }
   }
-
-  /**
-   * Attempt to reconnect to SignalR hub
-   */
   private async attemptReconnect(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('[SignalR] Max reconnect attempts reached')
@@ -195,9 +161,6 @@ export class SignalRService {
     }, this.reconnectDelay)
   }
 
-  /**
-   * Stop SignalR connection
-   */
   async stop(): Promise<void> {
     if (this.connection) {
       try {
@@ -212,27 +175,17 @@ export class SignalRService {
     }
   }
 
-  /**
-   * Check if connection is active
-   */
   isConnected(): boolean {
     return this.connection?.state === signalR.HubConnectionState.Connected
   }
 
-  /**
-   * Get connection state
-   */
   getConnectionState(): signalR.HubConnectionState | null {
     return this.connection?.state ?? null
   }
 }
 
-// Singleton instance
 let signalRServiceInstance: SignalRService | null = null
 
-/**
- * Get SignalR service instance (singleton)
- */
 export function getSignalRService(): SignalRService {
   if (!signalRServiceInstance) {
     signalRServiceInstance = new SignalRService()

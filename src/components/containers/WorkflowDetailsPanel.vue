@@ -75,6 +75,12 @@
         <p>No work steps found. Create the first work step to get started.</p>
       </div>
 
+      <!-- 
+        Work Steps List - Optimized for performance with 20+ tasks per workflow
+        - Uses memoized priority calculations (computed once per render cycle)
+        - Vue reactivity ensures real-time updates via SignalR
+        - No manual reload needed - store updates trigger automatic UI refresh
+      -->
       <div v-else class="worksteps-list">
         <WorkStepCard
           v-for="workStep in sortedWorkSteps"
@@ -207,30 +213,53 @@ const sortedWorkSteps = computed(() => {
   return [...workflowWorkSteps.value].sort((a, b) => a.sequenceNumber - b.sequenceNumber)
 })
 
+// Memoized priority calculations for all steps - computed once per render cycle
+// This ensures performance stays good even with 20+ tasks per workflow
+// The computed property automatically recalculates when workSteps or workflow changes,
+// ensuring the display stays current without manual reloads
+const workStepStore = useWorkStepStore()
+const stepPriorities = computed(() => {
+  const now = new Date()
+  const priorities = new Map<string, Priority>()
+  const urgentFlags = new Map<string, boolean>()
+  const deadlineApproachingFlags = new Map<string, boolean>()
+  
+  // Calculate all priorities in one pass for optimal performance
+  sortedWorkSteps.value.forEach((workStep) => {
+    // Calculate priority once per step
+    const priority = workStep.manualPriority || workStepStore.calculatePriority(workStep, now)
+    priorities.set(workStep.id, priority)
+    urgentFlags.set(workStep.id, priority === PriorityEnum.SHORT_TERM)
+    
+    // Calculate deadline approaching flag
+    if (workflow.value?.deadline) {
+      const deadline = new Date(workflow.value.deadline)
+      const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
+      deadlineApproachingFlags.set(workStep.id, hoursUntilDeadline <= 24 && hoursUntilDeadline > 0)
+    } else {
+      deadlineApproachingFlags.set(workStep.id, false)
+    }
+  })
+  
+  return { priorities, urgentFlags, deadlineApproachingFlags }
+})
+
 onMounted(async () => {
   await Promise.all([loadActors(), loadWorkflows()])
   await reloadWorkSteps()
 })
 
+// Optimized functions that use memoized values
 function getPriorityForStep(workStep: WorkStep): Priority {
-  // Priority should be calculated based on remaining duration of ALL remaining work steps
-  // Use the calculated priority from the store instead of the backend priority
-  const workStepStore = useWorkStepStore()
-  const now = new Date()
-  return workStep.manualPriority || workStepStore.calculatePriority(workStep, now)
+  return stepPriorities.value.priorities.get(workStep.id) || PriorityEnum.LONG_TERM
 }
 
 function isUrgentStep(workStep: WorkStep): boolean {
-  const priority = getPriorityForStep(workStep)
-  return priority === PriorityEnum.SHORT_TERM
+  return stepPriorities.value.urgentFlags.get(workStep.id) || false
 }
 
 function isDeadlineApproachingStep(workStep: WorkStep): boolean {
-  if (!workflow.value || !workflow.value.deadline) return false
-  const now = new Date()
-  const deadline = new Date(workflow.value.deadline)
-  const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
-  return hoursUntilDeadline <= 24 && hoursUntilDeadline > 0
+  return stepPriorities.value.deadlineApproachingFlags.get(workStep.id) || false
 }
 
 function formatDeadline(deadline: Date): string {
@@ -261,7 +290,7 @@ const canManage = computed(() => {
   return checkCanManageWorkflow(props.workflowId).allowed
 })
 
-// Get all actors assigned to work steps in this workflow (supports multiple assignments)
+
 const assignedActors = computed(() => {
   const actorIds = new Set<string>()
   workflowWorkSteps.value.forEach((ws) => {
@@ -313,7 +342,8 @@ function handleCloseEdit() {
 async function handleWorkStepUpdated(workStepId: string) {
   showEditStepForm.value = false
   editingWorkStep.value = null
-  await reloadWorkSteps()
+  // No need to reload - store is already updated via updateWorkStep, 
+  // and Vue reactivity will automatically update all views
 }
 
 async function handleDelete(workStepId: string) {
@@ -589,6 +619,112 @@ async function handleWorkflowUpdated(workflowId: string) {
   display: flex;
   gap: var(--spacing-xs);
   flex-wrap: wrap;
+}
+
+/* Responsive Styles - Device-adapted layout */
+@media (max-width: 768px) {
+  .workflow-details-panel {
+    padding: var(--spacing-md);
+    border-radius: 0;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-content {
+    width: 100%;
+  }
+
+  .header-title-section {
+    width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .header-actions .btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .btn-close {
+    align-self: flex-end;
+    margin-top: var(--spacing-xs);
+  }
+
+  .panel-header h2 {
+    font-size: var(--text-lg);
+  }
+
+  .workflow-deadline-badge {
+    flex-wrap: wrap;
+    font-size: var(--text-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .worksteps-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+
+  .worksteps-header h3 {
+    font-size: var(--text-lg);
+  }
+
+  .worksteps-list {
+    gap: var(--spacing-md);
+  }
+
+  .panel-actors {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+  }
+
+  .actor-item {
+    padding: var(--spacing-sm);
+  }
+
+  .actor-info {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .actor-steps-count {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .workflow-details-panel {
+    padding: var(--spacing-sm);
+  }
+
+  .panel-header h2 {
+    font-size: var(--text-base);
+  }
+
+  .workflow-deadline-badge {
+    font-size: 0.75rem;
+  }
+
+  .worksteps-header h3 {
+    font-size: var(--text-base);
+  }
+
+  .card-actions-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .card-actions-group .btn {
+    width: 100%;
+  }
 }
 </style>
 

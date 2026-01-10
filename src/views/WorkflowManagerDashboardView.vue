@@ -234,7 +234,6 @@ onMounted(async () => {
   }
 }
 
-/* Header Section */
 .dashboard__header {
   margin-bottom: var(--spacing-2xl);
   padding-bottom: var(--spacing-xl);
@@ -312,7 +311,6 @@ onMounted(async () => {
   letter-spacing: 0.05em;
 }
 
-/* Loading State */
 .dashboard__loading {
   padding: var(--spacing-3xl);
   display: flex;
@@ -371,7 +369,6 @@ onMounted(async () => {
   font-weight: var(--font-medium);
 }
 
-/* Error State */
 .dashboard__error {
   padding: var(--spacing-3xl);
   display: flex;
@@ -520,7 +517,6 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-/* Empty State */
 .empty-state {
   padding: var(--spacing-3xl);
   display: flex;
@@ -704,13 +700,113 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .workflow-manager-dashboard {
+    padding: var(--spacing-md);
+  }
+
+  .dashboard__header {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+
+  .page-title {
+    font-size: var(--text-2xl);
+  }
+
+  .page-subtitle {
+    font-size: var(--text-sm);
+  }
+
+  .header-stats {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stat-badge {
+    min-width: 80px;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
   .section-header {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--spacing-md);
   }
 
   .workflow-card {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
+  }
+
+  .workflow-card-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .workflow-card-title {
+    font-size: var(--text-lg);
+  }
+
+  .workflow-description {
+    font-size: var(--text-sm);
+  }
+
+  .workflow-details {
+    margin-top: var(--spacing-lg);
+  }
+
+  /* On mobile, hide workflows section when details are shown */
+  .workflows-section:has(+ .workflow-details) {
+    display: none;
+  }
+}
+
+/* Alternative approach: Use CSS to stack on mobile */
+@media (max-width: 768px) {
+  .workflow-manager-dashboard {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .workflows-section {
+    order: 1;
+  }
+
+  .workflow-details {
+    order: 2;
+    margin-top: 0;
+    padding-top: var(--spacing-lg);
+    border-top: 2px solid var(--color-border);
+  }
+}
+
+@media (max-width: 480px) {
+  .workflow-manager-dashboard {
+    padding: var(--spacing-sm);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+  }
+
+  .workflow-card {
+    padding: var(--spacing-sm);
+  }
+
+  .stat-badge {
+    min-width: 70px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--text-sm);
+  }
+
+  .stat-icon {
+    width: 20px;
+    height: 20px;
   }
 }
 </style>

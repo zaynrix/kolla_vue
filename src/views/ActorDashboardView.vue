@@ -278,6 +278,7 @@ the     <!-- Header Section -->
               <th class="col-title">Title</th>
               <th class="col-priority">Priority</th>
               <th class="col-duration">Duration</th>
+              <th class="col-deadline">Deadline</th>
               <th class="col-status">Status</th>
               <th class="col-workflow">Workflow</th>
               <th class="col-actions">Actions</th>
@@ -305,6 +306,12 @@ the     <!-- Header Section -->
                 </span>
               </td>
               <td class="col-duration">{{ workStep.duration }}h</td>
+              <td class="col-deadline">
+                <span v-if="workStep.deadlineDate" class="deadline-text">
+                  {{ formatDeadline(workStep.deadlineDate) }}
+                </span>
+                <span v-else class="deadline-text deadline-text--none">—</span>
+              </td>
               <td class="col-status">
                 <span :class="['status-badge', `status--${workStep.status.toLowerCase().replace('_', '-')}`]">
                   {{ workStep.status.replace('_', ' ') }}
@@ -454,13 +461,11 @@ const showCreateModal = ref(false)
 const selectedWorkStep = ref<WorkStep | null>(null)
 const selectedWorkflowId = ref<string>('')
 
-// Check if current user is admin (has role with isAdmin flag)
+
 const isAdmin = computed(() => userStore.isAdmin)
 
-// Use ViewModel users, fallback to actors if needed
 const availableUsers = computed(() => {
   if (viewModelUsers.value.length > 0) return viewModelUsers.value
-  // Map actors to users format
   return actors.value.map((actor) => ({
     id: actor.guid,
     username: actor.displayName,
@@ -470,27 +475,22 @@ const availableUsers = computed(() => {
   }))
 })
 
-// Get all work steps or filtered by selected user (supports multiple assignments)
+
 // Non-admin users only see their own assignments
 // Admin users see ALL assignments when no user is selected, or filtered when a user is selected
+// Optimized for fast personal task list access (< 0.5s target)
+// For non-admin users, use myWorkSteps directly (already filtered and prioritized)
+// This avoids unnecessary filtering operations on every render
 const displayedWorkSteps = computed(() => {
-  // For non-admin users, always filter by current user
+  // For non-admin users, use myWorkSteps directly - already filtered and optimized
+  // This is the personal task list - optimized for speed
   if (!isAdmin.value) {
-    const userIdToFilter = currentUser.value?.id
-    if (userIdToFilter) {
-      return prioritizedWorkSteps.value.filter((ws) => {
-        if (!ws.assignedTo) return false
-        if (Array.isArray(ws.assignedTo)) {
-          return ws.assignedTo.includes(userIdToFilter)
-        }
-        return ws.assignedTo === userIdToFilter
-      })
-    }
-    return []
+    // myWorkSteps is already filtered by current user and prioritized
+    // Using it directly is faster than filtering prioritizedWorkSteps
+    return myWorkSteps.value
   }
   
-  // For admin users: if no user selected, show ALL assignments
-  // If user selected, filter by that user
+  // For admin users, filter by selected user if one is selected
   const userIdToFilter = selectedUserId.value
   
   if (userIdToFilter) {
@@ -516,11 +516,18 @@ const assignedUsersMap = computed(() => {
   return map
 })
 
-// Load actors and set current user
 onMounted(async () => {
-  await loadActors()
+  // Optimize loading: Load actors and workflows in parallel for faster initial render
+  // Target: Personal task list accessible within 0.5 seconds
+  const loadStartTime = performance.now()
   
-  // Set current user if not set (use first actor as default)
+  // Load actors and workflows in parallel (non-blocking for each other)
+  const [actorsResult, workflowsResult] = await Promise.all([
+    loadActors(),
+    loadWorkflows()
+  ])
+  
+  // Set current user if needed (quick operation)
   if (!currentUser.value && actors.value.length > 0) {
     const firstActor = actors.value[0]
     if (firstActor) {
@@ -537,17 +544,26 @@ onMounted(async () => {
     selectedUserId.value = currentUser.value.id
   }
   
-  await loadWorkflows()
-  
-  // Admin users can see all work steps, non-admin only see their own
+  // Load work steps (prioritized for personal task list)
+  // For non-admin users, this is the critical path for personal task list access
   if (isAdmin.value) {
     await loadWorkSteps() // Load all work steps for admin
   } else {
     // Non-admin users only see their own assignments
+    // This is the personal task list - optimize for < 0.5s access
     if (currentUser.value) {
       selectedUserId.value = currentUser.value.id
       await loadMyWorkSteps() // Load only current user's assignments
     }
+  }
+  
+  const loadEndTime = performance.now()
+  const loadDuration = loadEndTime - loadStartTime
+  console.log(`[ActorDashboard] Personal task list loaded in ${loadDuration.toFixed(2)}ms`)
+  
+  // Log warning if loading takes too long (target: < 500ms)
+  if (loadDuration > 500 && !isAdmin.value) {
+    console.warn(`[ActorDashboard] Personal task list loading exceeded 500ms target: ${loadDuration.toFixed(2)}ms`)
   }
 })
 
@@ -599,12 +615,9 @@ async function retryLoad() {
   }
 }
 
-// Note: handleUserChange removed - filtering is handled automatically by v-model
-// on selectedUserId, which triggers the displayedWorkSteps computed property
-// Admin stays as admin, just filters the view to show selected actor's assignments
+
 
 function handleWorkStepSelect(workStep: WorkStep) {
-  // Check authorization for non-admin users
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
@@ -626,17 +639,29 @@ function getAssignedUserName(userId: string): string {
 }
 
 function getPriorityForStep(workStep: WorkStep): Priority {
-  // Use manual priority if set, otherwise use stored priority
   return workStep.manualPriority || workStep.priority
 }
 
 function getPriorityLabel(priority: Priority): string {
   const labels = {
-    [PriorityEnum.SHORT_TERM]: 'Short Term',
-    [PriorityEnum.MID_TERM]: 'Mid Term',
-    [PriorityEnum.LONG_TERM]: 'Long Term',
+    [PriorityEnum.SHORT_TERM]: 'Sofort',
+    [PriorityEnum.MID_TERM]: 'Mittelfristig',
+    [PriorityEnum.LONG_TERM]: 'Langfristig',
   }
   return labels[priority] || priority
+}
+
+function formatDeadline(deadline: Date | string | undefined): string {
+  if (!deadline) return ''
+  const d = typeof deadline === 'string' ? new Date(deadline) : deadline
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('de-DE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function isUrgentStep(workStep: WorkStep): boolean {
@@ -645,7 +670,7 @@ function isUrgentStep(workStep: WorkStep): boolean {
 }
 
 function isDeadlineApproachingStep(workStep: WorkStep): boolean {
-  // Check if deadline is approaching based on workflow deadline
+  
   const workflow = workflows.value.find((w) => w.id === workStep.workflowId)
   if (!workflow || !workflow.deadline) return false
   
@@ -672,7 +697,6 @@ async function handleComplete(workStepId: string) {
     return
   }
   
-  // Check authorization for non-admin users
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
@@ -683,8 +707,6 @@ async function handleComplete(workStepId: string) {
   
   if (confirm('Mark this work step as completed?')) {
     try {
-      // completeWorkStep updates the store directly, Vue reactivity handles UI updates
-      // No need to reload - the board will update in real-time
       await completeWorkStep(workStepId)
     } catch (err) {
       console.error('Failed to complete work step:', err)
@@ -704,7 +726,6 @@ function handleViewDetails(workStepId: string) {
     return
   }
   
-  // Check authorization for non-admin users
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
@@ -732,7 +753,6 @@ function handleReassign(workStepId: string) {
     workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
   }
   if (!workStep) {
-    // If still not found, try in myWorkSteps (for non-admin users)
     workStep = myWorkSteps.value.find(ws => ws.id === workStepId)
   }
   
@@ -746,14 +766,22 @@ function handleReassign(workStepId: string) {
 }
 
 async function handleReassigned(workStepId: string) {
-  // Reload work steps to reflect changes
-  if (isAdmin.value) {
-    await loadWorkSteps()
-  } else {
-    await loadMyWorkSteps()
+  try {
+    // Reload work steps to reflect changes
+    if (isAdmin.value) {
+      await loadWorkSteps()
+    } else {
+      await loadMyWorkSteps()
+    }
+    // Also reload workflows to ensure consistency
+    await loadWorkflows()
+    
+    // Close reassign modal if open
+    showReassignModal.value = false
+  } catch (err) {
+    console.error('Failed to reload after reassign:', err)
+    alert('Work step reassigned, but failed to refresh the list. Please reload the page.')
   }
-  // Also reload workflows to ensure consistency
-  await loadWorkflows()
 }
 
 async function handleUpdated(workStepId: string) {
@@ -768,14 +796,30 @@ async function handleUpdated(workStepId: string) {
 }
 
 async function handleCreated(workStepId: string) {
-  // Reload work steps to show new work step
-  if (isAdmin.value) {
-    await loadWorkSteps()
-  } else {
-    await loadMyWorkSteps()
+  try {
+    // Reload work steps to show new work step
+    if (isAdmin.value) {
+      await loadWorkSteps()
+    } else {
+      await loadMyWorkSteps()
+    }
+    // Also reload workflows to ensure consistency
+    await loadWorkflows()
+    
+    // Close modal and show success feedback
+    showCreateModal.value = false
+    
+    // Show success message
+    alert('Work step created successfully!')
+    
+    // Select the workflow that contains the new work step
+    if (workflows.value.length > 0 && workflows.value[0]) {
+      selectedWorkflowId.value = workflows.value[0].id
+    }
+  } catch (err) {
+    console.error('Failed to reload after creating work step:', err)
+    alert('Work step created, but failed to refresh the list. Please reload the page.')
   }
-  showCreateModal.value = false
-  selectedWorkflowId.value = workflows.value.length > 0 && workflows.value[0] ? workflows.value[0].id : ''
 }
 
 async function handleDelete(workStepId: string) {
@@ -835,7 +879,6 @@ async function handleStatusChange(workStepId: string, newStatus: TaskStatus) {
     return
   }
   
-  // Check authorization for non-admin users
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
@@ -843,32 +886,21 @@ async function handleStatusChange(workStepId: string, newStatus: TaskStatus) {
       return
     }
   }
-  // Get current step for potential rollback
+  
   const workStepStore = useWorkStepStore()
   const currentStep = workStepStore.getWorkStepById(workStepId)
   
-  // Don't update store optimistically here - let the board component handle it
-  // This ensures only the specific card updates, not the whole list
-  
   try {
-    // Update status via API
     const updatedStep = await updateWorkStep(workStepId, {
       status: newStatus,
       ...(newStatus === TaskStatusEnum.COMPLETED && { completedAt: new Date().toISOString() }),
     })
-    
-    // Store is updated by updateWorkStep with server response
-    // This will sync the optimistic update in the board component
-    
-    // If status changed to COMPLETED, trigger automatic next step assignment
     if (newStatus === TaskStatusEnum.COMPLETED) {
-      // Use completeWorkStep to trigger full workflow logic (next step assignment, notifications)
       await completeWorkStep(workStepId)
     }
   } catch (err) {
     console.error('Failed to update work step status:', err)
     
-    // Revert optimistic update on error by updating store with original
     if (currentStep) {
       workStepStore.updateWorkStep(currentStep)
     }
@@ -909,6 +941,35 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   min-height: calc(100vh - 80px);
 }
 
+@media (max-width: 768px) {
+  .actor-dashboard {
+    padding: var(--spacing-md);
+  }
+
+  .actor-dashboard__header {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .page-title {
+    font-size: var(--text-2xl);
+  }
+
+  .page-subtitle {
+    font-size: var(--text-sm);
+  }
+
+  .header-stats {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (min-width: 768px) {
   .actor-dashboard {
     padding: var(--spacing-2xl) var(--spacing-3xl);
@@ -922,7 +983,16 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   }
 }
 
-/* Header Section */
+@media (max-width: 480px) {
+  .actor-dashboard {
+    padding: var(--spacing-sm);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+  }
+}
+
 .actor-dashboard__header {
   margin-bottom: var(--spacing-2xl);
   padding-bottom: var(--spacing-xl);
@@ -1000,7 +1070,6 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   letter-spacing: 0.05em;
 }
 
-/* Loading State */
 .actor-dashboard__loading {
   padding: var(--spacing-3xl);
   display: flex;
@@ -1059,7 +1128,6 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   font-weight: var(--font-medium);
 }
 
-/* Error State */
 .actor-dashboard__error {
   padding: var(--spacing-3xl);
   display: flex;
@@ -1498,7 +1566,6 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   border-color: rgba(239, 68, 68, 0.2);
 }
 
-/* Empty State */
 .actor-dashboard__empty {
   padding: var(--spacing-3xl);
   display: flex;
@@ -1567,6 +1634,11 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   border-radius: var(--radius-xl);
 }
 
+.actor-dashboard__cards .workstep-card {
+  min-height: 400px;
+  overflow: visible;
+}
+
 @media (min-width: 1400px) {
   .actor-dashboard__cards {
     grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
@@ -1608,12 +1680,13 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 
 .workstep-table {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  table-layout: fixed;
 }
 
 .workstep-table thead {
@@ -1677,11 +1750,12 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 .row--urgent {
-  background-color: #fff5f5;
+  background-color: var(--color-error-light);
 }
 
 .row--urgent:hover {
-  background-color: #ffe5e5;
+  background-color: var(--color-error-light);
+  opacity: 0.9;
 }
 
 .row--completed {
@@ -1692,10 +1766,12 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   opacity: 0.8;
 }
 
-/* Title Column */
 .col-title {
+  width: 30%;
   min-width: 200px;
   max-width: 350px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .workstep-title-cell {
@@ -1709,23 +1785,63 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   color: var(--color-text-primary, #1a1a1a);
   font-size: 0.9375rem;
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .workstep-description {
   font-size: 0.8125rem;
-  color: var(--color-text-secondary, #4a5568);
+  color: var(--color-text-primary, #1a1a1a);
   line-height: 1.5;
   margin: 0;
   margin-top: 0.25rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-/* Priority Column */
 .col-priority {
+  width: 12%;
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.col-duration {
+  width: 8%;
+  min-width: 70px;
+  text-align: right;
+}
+
+.col-deadline {
+  width: 15%;
+  min-width: 140px;
+  white-space: nowrap;
+}
+
+.deadline-text {
+  font-size: 0.875rem;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.deadline-text--none {
+  color: var(--color-text-tertiary, #999);
+  font-style: italic;
+}
+
+.col-status {
+  width: 12%;
   min-width: 100px;
 }
 
 .col-workflow {
+  width: 20%;
+  min-width: 150px;
   color: var(--color-text-primary, #1a1a1a);
+}
+
+.col-actions {
+  width: 16%;
+  min-width: 120px;
+  text-align: right;
 }
 
 .workflow-name {
@@ -1742,29 +1858,27 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 .priority--short-term {
-  background-color: #fee;
-  color: #c33;
+  background-color: var(--color-error-light);
+  color: var(--color-error);
 }
 
 .priority--mid-term {
-  background-color: #fff4e6;
-  color: #d97706;
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .priority--long-term {
-  background-color: #e6f2ff;
-  color: #2563eb;
+  background-color: var(--color-info-light);
+  color: var(--color-info);
 }
 
-/* Duration Column */
 .col-duration {
   min-width: 70px;
   text-align: center;
-  color: #495057;
+  color: var(--color-text-primary);
   font-weight: 500;
 }
 
-/* Status Column */
 .col-status {
   min-width: 110px;
 }
@@ -1779,33 +1893,31 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 .status--pending {
-  background-color: #fff4e6;
-  color: #d97706;
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .status--in-progress {
-  background-color: #e6f2ff;
-  color: #2563eb;
+  background-color: var(--color-info-light);
+  color: var(--color-info);
 }
 
 .status--completed {
-  background-color: #e6f9e6;
-  color: #16a34a;
+  background-color: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .status--blocked {
-  background-color: #fee;
-  color: #c33;
+  background-color: var(--color-error-light);
+  color: var(--color-error);
 }
 
-/* Workflow Column */
 .col-workflow {
   min-width: 120px;
-  color: #495057;
+  color: var(--color-text-primary);
   font-size: 0.875rem;
 }
 
-/* Actions Column */
 .col-actions {
   min-width: 200px;
   text-align: right;
@@ -1829,11 +1941,10 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 .text-muted {
-  color: #6c757d;
+  color: var(--color-text-tertiary);
   font-size: 0.875rem;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .workstep-table {
     font-size: 0.875rem;
@@ -1875,15 +1986,15 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 
 .btn {
   padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn:hover {
-  background: #f5f5f5;
+  background: var(--color-surface-hover);
 }
 
 .btn--small {
@@ -1892,13 +2003,13 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 .btn--primary {
-  background: #2196f3;
-  color: white;
-  border-color: #2196f3;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
 }
 
 .btn--primary:hover {
-  background: #1976d2;
+  background: var(--color-primary-dark);
 }
 
 .btn--danger {

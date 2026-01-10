@@ -1,8 +1,3 @@
-/**
- * WorkStep API Service
- * Handles all work step-related API calls
- */
-
 import type { ApiClient } from './client'
 import type { WorkStep, User } from '@/types/domain'
 import type {
@@ -198,14 +193,14 @@ export class WorkStepApiService {
       console.log('[WorkStepApi] Updating title:', request.title)
       await this.apiClient.patch<void>(
         `/Assignment/SetDisplayName`,
-        { guid: id, DisplayName: request.title }
+        { Guid: id, DisplayName: request.title }
       )
     }
     
     if (request.description !== undefined) {
       await this.apiClient.patch<void>(
         `/Assignment/SetDescription`,
-        { guid: id, Description: request.description ?? null }
+        { Guid: id, Description: request.description ?? null }
       )
     }
     
@@ -213,7 +208,7 @@ export class WorkStepApiService {
       const assigneeGuid = Array.isArray(request.assignedTo) ? request.assignedTo[0] : request.assignedTo
       await this.apiClient.patch<void>(
         `/Assignment/SetAssignee`,
-        { guid: id, AssigneeGuid: assigneeGuid ?? null }
+        { Guid: id, AssigneeGuid: assigneeGuid ?? null }
       )
     }
     
@@ -224,12 +219,7 @@ export class WorkStepApiService {
       )
     }
     
-    if (request.manualPriority !== undefined) {
-      await this.apiClient.patch<void>(
-        `/Assignment/SetPriority`,
-        { guid: id, priority: mapPriorityToBackend(request.manualPriority) }
-      )
-    }
+    // Priority is now always auto-calculated - no manual priority updates allowed
     
     // Update start date if provided
     if (request.startDate !== undefined) {

@@ -69,6 +69,31 @@
           </div>
         </div>
         
+        <div v-if="workStep.startDate" class="detail-section">
+          <h3 class="detail-label">Start Date</h3>
+          <p class="detail-value">{{ formatDate(workStep.startDate) }}</p>
+        </div>
+        
+        <div v-if="workStep.deadlineDate" class="detail-section">
+          <h3 class="detail-label">Deadline</h3>
+          <div class="deadline-display">
+            <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="deadline-value">{{ formatDeadline(workStep.deadlineDate) }}</span>
+          </div>
+        </div>
+        
+        <div v-if="workflowDeadline" class="detail-section">
+          <h3 class="detail-label">Workflow Deadline</h3>
+          <div class="deadline-display">
+            <svg class="deadline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="deadline-value">{{ formatDeadline(workflowDeadline) }}</span>
+          </div>
+        </div>
+        
         <div v-if="workStep.completedAt" class="detail-section">
           <h3 class="detail-label">Completed At</h3>
           <p class="detail-value">{{ formatDate(workStep.completedAt) }}</p>
@@ -167,8 +192,9 @@ function formatDate(date: Date | string): string {
   return d.toLocaleString()
 }
 
-function formatDeadline(deadline: Date): string {
-  return new Date(deadline).toLocaleDateString('de-DE', {
+function formatDeadline(deadline: Date | string): string {
+  const d = typeof deadline === 'string' ? new Date(deadline) : deadline
+  return d.toLocaleDateString('de-DE', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

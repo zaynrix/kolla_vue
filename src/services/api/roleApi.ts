@@ -1,8 +1,3 @@
-/**
- * Role API Service
- * Handles all role-related API calls
- */
-
 import type { ApiClient } from './client'
 import type {
   RoleDto,
@@ -17,9 +12,9 @@ export class RoleApiService {
   constructor(private apiClient: ApiClient) {}
 
   async getAllRoles(): Promise<string[]> {
-    console.log('[RoleApi] Fetching all roles from /Role/getall')
+    console.log('[RoleApi] Fetching all roles from /Role/GetAll')
     try {
-      const result = await this.apiClient.get<string[]>('/Role/getall')
+      const result = await this.apiClient.get<string[]>('/Role/GetAll')
       console.log('[RoleApi] getAllRoles raw result:', result)
       console.log('[RoleApi] Result type:', typeof result, 'IsArray:', Array.isArray(result))
       

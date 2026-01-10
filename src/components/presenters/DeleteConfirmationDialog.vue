@@ -1,20 +1,26 @@
 <template>
   <transition name="fade">
-    <div v-if="show" class="logout-dialog-overlay" @click="handleCancel">
-      <div class="logout-dialog" @click.stop>
+    <div v-if="show" class="delete-dialog-overlay" @click="handleCancel">
+      <div class="delete-dialog" @click.stop>
         <div class="dialog-header">
           <div class="dialog-icon-wrapper">
             <svg class="dialog-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
           </div>
-          <h2 class="dialog-title">Confirm Logout</h2>
+          <h2 class="dialog-title">{{ title || 'Delete Item' }}</h2>
         </div>
         
         <div class="dialog-content">
           <p class="dialog-message">
-            Are you sure you want to logout? You will need to sign in again to access your account.
+            Are you sure you want to delete <strong>{{ itemName }}</strong>? This action cannot be undone and all associated data will be permanently removed.
           </p>
+          <div class="dialog-warning">
+            <svg class="warning-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span>This action is irreversible</span>
+          </div>
         </div>
         
         <div class="dialog-actions">
@@ -24,11 +30,11 @@
             </svg>
             <span>Cancel</span>
           </button>
-          <button @click="handleConfirm" class="btn btn--primary btn--danger">
+          <button @click="handleConfirm" class="btn btn--danger">
             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
-            <span>Logout</span>
+            <span>{{ confirmButtonText || 'Delete' }}</span>
           </button>
         </div>
       </div>
@@ -39,9 +45,15 @@
 <script setup lang="ts">
 interface Props {
   show: boolean
+  itemName: string
+  title?: string
+  confirmButtonText?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  title: 'Delete Item',
+  confirmButtonText: 'Delete'
+})
 
 const emit = defineEmits<{
   confirm: []
@@ -58,13 +70,13 @@ function handleCancel() {
 </script>
 
 <style scoped>
-.logout-dialog-overlay {
+.delete-dialog-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,12 +84,12 @@ function handleCancel() {
   backdrop-filter: blur(4px);
 }
 
-.logout-dialog {
+.delete-dialog {
   background: var(--color-surface);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-2xl);
   border: 1px solid var(--color-border);
-  max-width: 420px;
+  max-width: 480px;
   width: 90%;
   overflow: hidden;
   animation: slideUp 0.2s ease-out;
@@ -100,8 +112,8 @@ function handleCancel() {
   align-items: center;
   gap: var(--spacing-md);
   padding: var(--spacing-xl);
-  background: var(--color-primary-gradient);
-  color: var(--color-text-inverse);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
 }
 
 .dialog-icon-wrapper {
@@ -118,14 +130,14 @@ function handleCancel() {
 .dialog-icon {
   width: 32px;
   height: 32px;
-  color: var(--color-text-inverse);
+  color: white;
 }
 
 .dialog-title {
   margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
-  color: var(--color-text-inverse);
+  color: white;
   text-align: center;
 }
 
@@ -134,11 +146,36 @@ function handleCancel() {
 }
 
 .dialog-message {
-  margin: 0;
+  margin: 0 0 var(--spacing-lg) 0;
   font-size: var(--text-base);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   line-height: var(--leading-relaxed);
   text-align: center;
+}
+
+.dialog-message strong {
+  color: var(--color-danger);
+  font-weight: var(--font-bold);
+}
+
+.dialog-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.warning-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .dialog-actions {
@@ -182,23 +219,16 @@ function handleCancel() {
   box-shadow: var(--shadow-sm);
 }
 
-.btn--primary {
-  background: var(--color-primary-gradient);
-  color: var(--color-text-inverse);
-  box-shadow: var(--shadow-sm);
-}
-
-.btn--primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
 .btn--danger {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn--danger:hover {
   background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Transitions */
@@ -214,7 +244,7 @@ function handleCancel() {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .logout-dialog {
+  .delete-dialog {
     width: 95%;
     max-width: none;
   }
@@ -229,6 +259,4 @@ function handleCancel() {
   }
 }
 </style>
-
-
 

@@ -1,9 +1,3 @@
-/**
- * useWorkflow Composable
- * ViewModel layer - Business logic for workflow management
- * Handles workflow operations, filtering, and event handling
- */
-
 import { ref, computed, watch, type Ref } from 'vue'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useApi } from './useApi'
@@ -16,9 +10,6 @@ export function useWorkflow() {
   const loading = ref(false)
   const error = ref<Error | null>(null)
 
-  /**
-   * Load all workflows from API
-   */
   const loadWorkflows = async () => {
     loading.value = true
     error.value = null

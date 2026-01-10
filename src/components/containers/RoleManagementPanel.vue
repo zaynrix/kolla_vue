@@ -136,7 +136,7 @@
                   </button>
                   <button
                     @click.stop="handleDelete(role.guid)"
-                    class="btn btn--danger btn--small"
+                    class="btn btn--secondary btn--small btn--delete"
                     title="Delete Role"
                   >
                     <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,12 +183,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRole } from '@/composables/useRole'
+import { useUserStore } from '@/stores/user'
 import CreateRoleForm from './CreateRoleForm.vue'
 import EditRoleForm from './EditRoleForm.vue'
 import type { RoleDto } from '@/types/api'
 
+const userStore = useUserStore()
+const isAdmin = computed(() => userStore.isAdmin)
 const { roles, loading, error, loadRoles, deleteRole } = useRole()
 const showCreateForm = ref(false)
 const showEditForm = ref(false)
@@ -238,7 +241,6 @@ async function handleDelete(guid: string) {
   margin: 0 auto;
 }
 
-/* Header Section */
 .panel-header {
   margin-bottom: var(--spacing-2xl);
 }
@@ -318,7 +320,6 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
-/* Loading State */
 .loading-state {
   display: flex;
   align-items: center;
@@ -359,7 +360,6 @@ async function handleDelete(guid: string) {
   }
 }
 
-/* Error State */
 .error-state {
   display: flex;
   align-items: center;
@@ -396,7 +396,6 @@ async function handleDelete(guid: string) {
   margin: 0;
 }
 
-/* Content Section */
 .content-section {
   display: flex;
   flex-direction: column;
@@ -553,14 +552,22 @@ async function handleDelete(guid: string) {
 }
 
 .col-actions {
-  min-width: 180px;
+  min-width: 220px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .action-buttons {
   display: flex;
   gap: var(--spacing-xs);
   justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.action-buttons .btn {
+  display: inline-flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .btn {
@@ -604,6 +611,24 @@ async function handleDelete(guid: string) {
   border-color: var(--color-primary);
 }
 
+.btn--delete {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn--delete:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.btn--delete .btn-icon {
+  color: #dc2626;
+}
+
+.btn--delete span {
+  color: #dc2626;
+}
+
 .btn--danger {
   background: var(--color-danger);
   color: white;
@@ -620,7 +645,6 @@ async function handleDelete(guid: string) {
   font-size: var(--text-xs);
 }
 
-/* Empty State */
 .empty-state {
   display: flex;
   align-items: center;
@@ -685,7 +709,6 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .role-management-panel {
     padding: var(--spacing-md);

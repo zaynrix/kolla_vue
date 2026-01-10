@@ -1,9 +1,3 @@
-/**
- * WorkStep Store - Model Layer
- * Centralized reactive state management for work steps
- * Handles sequential workflow logic and priority calculation
- */
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { WorkStep, Priority, Workflow } from '@/types/domain'
@@ -11,13 +5,11 @@ import { Priority as PriorityEnum, TaskStatus } from '@/types/domain'
 import { useWorkflowStore } from './workflow'
 
 export const useWorkStepStore = defineStore('workStep', () => {
-  // State
   const workSteps = ref<WorkStep[]>([])
   const currentWorkStepId = ref<string | null>(null)
 
   const workflowStore = useWorkflowStore()
 
-  // Getters
   const currentWorkStep = computed(() => {
     if (!currentWorkStepId.value) return null
     return (
@@ -26,15 +18,9 @@ export const useWorkStepStore = defineStore('workStep', () => {
     )
   })
 
-  /**
-   * Get work steps prioritized by urgency
-   * Immediate: ≤8h, Medium-term: ≤32h, Long-term: >32h
-   * Manual priority override takes precedence
-   */
   const prioritizedWorkSteps = computed(() => {
     const now = new Date()
     return [...workSteps.value].sort((a, b) => {
-      // Use manual priority if set, otherwise calculate
       const aPriority = a.manualPriority || calculatePriority(a, now)
       const bPriority = b.manualPriority || calculatePriority(b, now)
 
@@ -51,18 +37,10 @@ export const useWorkStepStore = defineStore('workStep', () => {
         return aPriorityValue - bPriorityValue
       }
 
-      // If same priority, sort by sequence number (for sequential workflow)
       return a.sequenceNumber - b.sequenceNumber
     })
   })
 
-  /**
-   * Calculate priority based on workflow deadline and remaining duration
-   * According to requirements: Priority is based on remaining duration of ALL remaining work steps
-   * - ≤8h → IMMEDIATE
-   * - >8h & ≤32h → MEDIUM_TERM
-   * - >32h → LONG_TERM
-   */
   function calculatePriority(workStep: WorkStep, now: Date): Priority {
     const workflow = workflowStore.getWorkflowById(workStep.workflowId)
     if (!workflow || !workflow.deadline) {
@@ -73,29 +51,31 @@ export const useWorkStepStore = defineStore('workStep', () => {
     const hoursUntilDeadline =
       (deadline.getTime() - now.getTime()) / (1000 * 60 * 60)
 
-    // Calculate total duration of ALL remaining work steps (including current and all subsequent)
-    const totalRemainingDuration = getTotalRemainingDuration(workflow.id, workStep.sequenceNumber)
-    
-    // Effective hours = deadline - remaining work duration
+    // Calculate duration of ALL remaining open tasks in the workflow
+    const totalRemainingDuration = getTotalRemainingDuration(workflow.id)
     const effectiveHoursUntilDeadline = hoursUntilDeadline - totalRemainingDuration
 
+    // Urgency thresholds:
+    // - "sofort" (immediate) if remaining duration ≤ 8 hours
+    // - "mittelfristig" (medium-term) if remaining duration > 8 and ≤ 32 hours
+    // - "langfristig" (long-term) otherwise
     if (effectiveHoursUntilDeadline <= 8) {
-      return PriorityEnum.SHORT_TERM // ShortTerm
+      return PriorityEnum.SHORT_TERM // "sofort"
     } else if (effectiveHoursUntilDeadline <= 32) {
-      return PriorityEnum.MID_TERM // MidTerm
+      return PriorityEnum.MID_TERM // "mittelfristig"
     } else {
-      return PriorityEnum.LONG_TERM // LongTerm
+      return PriorityEnum.LONG_TERM // "langfristig"
     }
   }
 
   /**
-   * Get total duration of ALL remaining work steps
-   * Includes current step and all subsequent steps that are not yet completed
+   * Get total duration of all remaining open tasks in a workflow
+   * This includes ALL open tasks, not just from a specific sequence
    */
-  function getTotalRemainingDuration(workflowId: string, currentSequence: number): number {
+  function getTotalRemainingDuration(workflowId: string): number {
     const workflowSteps = getWorkStepsByWorkflow(workflowId)
     return workflowSteps
-      .filter((step) => step.sequenceNumber >= currentSequence && step.status !== TaskStatus.COMPLETED)
+      .filter((step) => step.status !== TaskStatus.COMPLETED)
       .reduce((sum, step) => sum + step.duration, 0)
   }
 
@@ -128,7 +108,6 @@ export const useWorkStepStore = defineStore('workStep', () => {
     })
   }
 
-  // Actions
   function setWorkSteps(newWorkSteps: WorkStep[]) {
     workSteps.value = newWorkSteps
   }
@@ -146,14 +125,22 @@ export const useWorkStepStore = defineStore('workStep', () => {
     workSteps.value.push(workStep)
   }
 
+  /**
+   * Update a work step in the store
+   * This automatically triggers reactivity updates in all views that use workSteps
+   * Real-time updates: When a workflow manager updates a work step, all actors
+   * with their work step lists open will see the changes automatically
+   * 
+   * Note: For cross-browser/tab updates, SignalR broadcasts the change and
+   * other tabs receive it via handleAssignmentUpdated in signalrService
+   */
   function updateWorkStep(workStep: WorkStep) {
     const index = workSteps.value.findIndex((step) => step.id === workStep.id)
     if (index >= 0) {
-      // Replace the entire object to ensure Vue reactivity detects the change
-      // This ensures the board updates in real-time when status changes
-      workSteps.value[index] = { ...workStep }
+      // Use splice to ensure Vue reactivity detects the change
+      // Direct index assignment sometimes doesn't trigger reactivity properly
+      workSteps.value.splice(index, 1, { ...workStep })
     } else {
-      // If not found, add it
       workSteps.value.push(workStep)
     }
   }
@@ -177,15 +164,10 @@ export const useWorkStepStore = defineStore('workStep', () => {
   }
 
   return {
-    // State
     workSteps,
     currentWorkStepId,
-
-    // Getters
     currentWorkStep,
     prioritizedWorkSteps,
-
-    // Actions
     setWorkSteps,
     setWorkStep,
     addWorkStep,
@@ -196,8 +178,6 @@ export const useWorkStepStore = defineStore('workStep', () => {
     getWorkStepsByWorkflow,
     getWorkflowForStep,
     getAssignedWorkSteps,
-    
-    // Priority calculation
     calculatePriority,
   }
 })

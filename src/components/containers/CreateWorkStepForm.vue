@@ -35,37 +35,7 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="step-duration" class="form-label">Duration (hours) *</label>
-          <input
-            id="step-duration"
-            v-model.number="formData.duration"
-            type="number"
-            class="form-input"
-            required
-            min="1"
-            step="1"
-            placeholder="e.g., 8"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="step-sequence" class="form-label">Sequence Number *</label>
-          <input
-            id="step-sequence"
-            v-model.number="formData.sequenceNumber"
-            type="number"
-            class="form-input"
-            required
-            min="1"
-            step="1"
-            placeholder="e.g., 1"
-          />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="step-start-date" class="form-label">Start Date</label>
+          <label for="step-start-date" class="form-label">Start Date *</label>
           <div class="date-input-wrapper">
             <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -76,13 +46,14 @@
               type="datetime-local"
               class="form-input date-input"
               :min="minStartDate"
+              required
             />
           </div>
-          <small class="form-hint">Optional - cannot be in the past</small>
+          <small class="form-hint">Cannot be in the past</small>
         </div>
 
         <div class="form-group">
-          <label for="step-deadline-date" class="form-label">Deadline Date</label>
+          <label for="step-deadline-date" class="form-label">Deadline Date *</label>
           <div class="date-input-wrapper">
             <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -93,39 +64,46 @@
               type="datetime-local"
               class="form-input date-input"
               :min="minDeadlineDate"
+              :max="maxDeadlineDate"
+              required
             />
           </div>
-          <small class="form-hint">Optional - must be after start date</small>
+          <small class="form-hint">
+            Must be after start date
+            <span v-if="workflow?.deadline">
+              and before workflow deadline ({{ new Date(workflow.deadline).toLocaleDateString() }})
+            </span>
+          </small>
+        </div>
+      </div>
+
+      <div v-if="calculatedDuration !== null" class="form-group">
+        <div class="duration-display">
+          <label class="form-label">Time Remaining</label>
+          <div class="duration-value">
+            <strong>{{ calculatedDuration }} hours</strong>
+            <small class="form-hint">Time left to finish the task (calculated from deadline date)</small>
+          </div>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="step-role" class="form-label">Required Role</label>
-        <select
-          id="step-role"
-          v-model="selectedRoleGuid"
-          class="form-select"
-        >
-          <option :value="null">No Role Required</option>
-          <option
-            v-for="role in roles"
-            :key="role.guid"
-            :value="role.guid"
-          >
-            {{ role.displayName }}{{ role.isAdmin ? ' (Admin)' : '' }}
-          </option>
-        </select>
-        <small v-if="roles.length === 0" class="form-hint form-hint--error">
-          No roles available. Please create a role first.
-        </small>
-        <small v-else class="form-hint">
-          {{ roles.length }} role(s) available. Select a role to filter users.
-        </small>
-      </div>
-
-      <div class="form-group">
-        <label for="step-assignees" class="form-label">Assign To Users (Optional)</label>
+        <label for="step-assignees" class="form-label">Assign To Users</label>
         <div class="assignees-container">
+          <!-- Select All Option -->
+          <div v-if="availableUsers.length > 0" class="assignee-checkbox assignee-checkbox--select-all">
+            <input
+              id="assignee-select-all"
+              type="checkbox"
+              :checked="selectedAssignees.length === availableUsers.length && availableUsers.length > 0"
+              @change="handleSelectAll"
+              class="checkbox-input"
+            />
+            <label for="assignee-select-all" class="checkbox-label checkbox-label--select-all">
+              <strong>Select All Users</strong>
+            </label>
+          </div>
+          
           <div
             v-for="user in availableUsers"
             :key="user.id"
@@ -144,9 +122,6 @@
           </div>
           <p v-if="actors.length === 0" class="no-users">
             No users available. Please create users first.
-          </p>
-          <p v-else-if="availableUsers.length === 0 && selectedRoleGuid" class="no-users">
-            No users available with the selected role. Try selecting "No Role Required" to see all users.
           </p>
           <p v-else-if="availableUsers.length === 0" class="no-users">
             No users available.
@@ -172,10 +147,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
 import { useActor } from '@/composables/useActor'
-import { useRole } from '@/composables/useRole'
+import { useWorkflowStore } from '@/stores/workflow'
+import { useWorkStepStore } from '@/stores/workStep'
 import type { CreateWorkStepRequest } from '@/types/api'
 import { Role } from '@/types/domain'
 import type { ActorDto } from '@/types/api'
@@ -196,14 +172,26 @@ const emit = defineEmits<{
 
 const { createWorkStep, loading } = useWorkStep()
 const { actors, loadActors } = useActor()
-const { roles, loadRoles } = useRole()
+const workflowStore = useWorkflowStore()
+const workStepStore = useWorkStepStore()
+
+// Calculate next sequence number based on existing work steps in the workflow
+const calculateNextSequenceNumber = (): number => {
+  const workflowSteps = workStepStore.getWorkStepsByWorkflow(props.workflowId)
+  if (workflowSteps.length === 0) {
+    return 1
+  }
+  // Get the highest sequence number and add 1
+  const maxSequence = Math.max(...workflowSteps.map(ws => ws.sequenceNumber || 0))
+  return maxSequence + 1
+}
 
 const formData = ref<CreateWorkStepRequest>({
   title: '',
   description: '',
-  duration: 8,
+  duration: 8, // Will be calculated automatically from startDate and deadlineDate
   workflowId: props.workflowId,
-  sequenceNumber: 1,
+  sequenceNumber: 1, // Will be calculated before submit
   requiredRole: Role.TEAM_MEMBER,
   assignedTo: undefined,
   startDate: undefined,
@@ -211,7 +199,6 @@ const formData = ref<CreateWorkStepRequest>({
 })
 
 const selectedAssignees = ref<string[]>([])
-const selectedRoleGuid = ref<string | null>(null)
 const error = ref<string | null>(null)
 
 // Computed properties for date minimums
@@ -232,93 +219,126 @@ const minDeadlineDate = computed(() => {
   return minStartDate.value
 })
 
-// Filter actors by selected role GUID
-const availableUsers = computed(() => {
-  console.log('[CreateWorkStepForm] availableUsers computed - actors:', actors.value.length, 'selectedRoleGuid:', selectedRoleGuid.value)
-  
-  // If no role is selected, show all actors
-  if (!selectedRoleGuid.value) {
-    const allUsers = actors.value.map((actor) => ({
-      id: actor.guid,
-      username: actor.displayName,
-      email: `${actor.displayName}@example.com`,
-      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
-      tenantId: undefined,
-    }))
-    console.log('[CreateWorkStepForm] No role selected, showing all users:', allUsers.length)
-    return allUsers
+// Get workflow deadline to limit step deadlines
+const workflow = computed(() => workflowStore.getWorkflowById(props.workflowId))
+const maxDeadlineDate = computed(() => {
+  if (!workflow.value?.deadline) {
+    return undefined
+  }
+  // Format workflow deadline for datetime-local input
+  const deadline = new Date(workflow.value.deadline)
+  const year = deadline.getFullYear()
+  const month = String(deadline.getMonth() + 1).padStart(2, '0')
+  const day = String(deadline.getDate()).padStart(2, '0')
+  const hours = String(deadline.getHours()).padStart(2, '0')
+  const minutes = String(deadline.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+})
+
+// Calculate duration as time remaining from now until deadline
+const calculatedDuration = computed(() => {
+  if (!formData.value.deadlineDate) {
+    return null
   }
   
-  // Filter actors that have the selected role
-  const filteredUsers = actors.value
-    .filter((actor) => {
-      if (!actor.role) {
-        console.log('[CreateWorkStepForm] Actor has no role:', actor.displayName)
-        return false
-      }
-      // Check if actor's role GUID matches the selected role GUID
-      const matches = actor.role.guid === selectedRoleGuid.value
-      console.log('[CreateWorkStepForm] Actor role check:', actor.displayName, 'role.guid:', actor.role.guid, 'selectedRoleGuid:', selectedRoleGuid.value, 'matches:', matches)
-      return matches
-    })
-    .map((actor) => ({
-      id: actor.guid,
-      username: actor.displayName,
-      email: `${actor.displayName}@example.com`,
-      role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
-      tenantId: undefined,
-    }))
+  const deadlineDate = new Date(formData.value.deadlineDate)
+  const now = new Date()
   
-  console.log('[CreateWorkStepForm] Filtered users for role:', filteredUsers.length)
-  return filteredUsers
+  if (isNaN(deadlineDate.getTime())) {
+    return null
+  }
+  
+  if (deadlineDate <= now) {
+    return 0 // Deadline has passed
+  }
+  
+  const diffMs = deadlineDate.getTime() - now.getTime()
+  const hours = Math.round(diffMs / (1000 * 60 * 60))
+  
+  return hours > 0 ? hours : 0
+})
+
+// Show all users (not filtered by role)
+const availableUsers = computed(() => {
+  console.log('[CreateWorkStepForm] availableUsers computed - actors:', actors.value.length)
+  
+  // Always show all actors/users
+  const allUsers = actors.value.map((actor) => ({
+    id: actor.guid,
+    username: actor.displayName,
+    email: `${actor.displayName}@example.com`,
+    role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
+    tenantId: undefined,
+  }))
+  
+  console.log('[CreateWorkStepForm] Showing all users:', allUsers.length)
+  return allUsers
 })
 
 onMounted(async () => {
-  console.log('[CreateWorkStepForm] onMounted - loading actors and roles...')
+  console.log('[CreateWorkStepForm] onMounted - loading actors...')
   try {
-    await Promise.all([loadActors(), loadRoles()])
-    console.log('[CreateWorkStepForm] Loaded actors:', actors.value.length, 'roles:', roles.value.length)
+    await loadActors()
+    console.log('[CreateWorkStepForm] Loaded actors:', actors.value.length)
     console.log('[CreateWorkStepForm] Actors:', actors.value)
-    console.log('[CreateWorkStepForm] Roles:', roles.value)
   } catch (err) {
-    console.error('[CreateWorkStepForm] Error loading actors/roles:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to load actors or roles'
+    console.error('[CreateWorkStepForm] Error loading actors:', err)
+    error.value = err instanceof Error ? err.message : 'Failed to load actors'
   }
 })
 
-// Watch for role GUID changes and update available users
-watch(() => selectedRoleGuid.value, () => {
-  // Clear assignee selections when role changes (they might not have the new role)
-  selectedAssignees.value = []
-})
+// Handle select all users
+function handleSelectAll(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.checked) {
+    // Select all users
+    selectedAssignees.value = availableUsers.value.map(user => user.id)
+  } else {
+    // Deselect all users
+    selectedAssignees.value = []
+  }
+}
 
 async function handleSubmit() {
   error.value = null
   try {
-    // Validate dates
-    if (formData.value.startDate) {
-      const startDate = new Date(formData.value.startDate)
-      const now = new Date()
-      if (startDate < now) {
-        error.value = 'Start date cannot be in the past'
-        return
-      }
+    // Validate that dates are provided (required fields)
+    if (!formData.value.startDate) {
+      error.value = 'Start date is required'
+      return
     }
 
-    if (formData.value.deadlineDate) {
-      const deadlineDate = new Date(formData.value.deadlineDate)
-      const now = new Date()
-      if (deadlineDate < now) {
-        error.value = 'Deadline date cannot be in the past'
-        return
-      }
+    if (!formData.value.deadlineDate) {
+      error.value = 'Deadline date is required'
+      return
+    }
 
-      if (formData.value.startDate) {
-        const startDate = new Date(formData.value.startDate)
-        if (deadlineDate <= startDate) {
-          error.value = 'Deadline date must be after start date'
-          return
-        }
+    // Validate dates
+    const startDate = new Date(formData.value.startDate)
+    const deadlineDate = new Date(formData.value.deadlineDate)
+    const now = new Date()
+
+    if (startDate < now) {
+      error.value = 'Start date cannot be in the past'
+      return
+    }
+
+    if (deadlineDate < now) {
+      error.value = 'Deadline date cannot be in the past'
+      return
+    }
+
+    if (deadlineDate <= startDate) {
+      error.value = 'Deadline date must be after start date'
+      return
+    }
+
+    // Validate that step deadline is not after workflow deadline
+    if (workflow.value?.deadline) {
+      const workflowDeadline = new Date(workflow.value.deadline)
+      if (deadlineDate > workflowDeadline) {
+        error.value = `Deadline date cannot be after workflow deadline (${workflowDeadline.toLocaleDateString()})`
+        return
       }
     }
 
@@ -332,42 +352,56 @@ async function handleSubmit() {
       assignedTo = [...selectedAssignees.value]
     }
 
-    // Format dates to ISO string for API
-    const formatDateForAPI = (dateString: string | null | undefined): string | undefined => {
-      if (!dateString) return undefined
+    // Format dates to ISO string for API (dates are required, so they will always be defined)
+    const formatDateForAPI = (dateString: string): string => {
       return new Date(dateString).toISOString()
     }
+
+    // Calculate duration as time remaining from now until deadline
+    // Reuse the 'now' variable already declared above for validation
+    const diffMs = deadlineDate.getTime() - now.getTime()
+    const calculatedDuration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+    const duration = calculatedDuration > 0 ? calculatedDuration : 0 // Use 0 if deadline has passed, not 8
+
+    // Calculate sequence number based on existing work steps
+    const nextSequenceNumber = calculateNextSequenceNumber()
+
+    console.log('[CreateWorkStepForm] Creating work step with:', {
+      title: formData.value.title,
+      duration,
+      sequenceNumber: nextSequenceNumber,
+      startDate: formatDateForAPI(formData.value.startDate!),
+      deadlineDate: formatDateForAPI(formData.value.deadlineDate!),
+      assignedTo,
+    })
 
     // Create work step request with only the necessary fields
     // Don't spread formData.value to avoid including unwanted properties
     const workStep = await createWorkStep({
       title: formData.value.title,
       description: formData.value.description,
-      duration: formData.value.duration,
+      duration: duration, // Automatically calculated from startDate and deadlineDate
       workflowId: formData.value.workflowId,
-      sequenceNumber: formData.value.sequenceNumber,
+      sequenceNumber: nextSequenceNumber, // Use calculated sequence number
       requiredRole: formData.value.requiredRole, // Keep for backward compatibility
-      requiredRoleGuid: selectedRoleGuid.value, // Use selected role GUID
       assignedTo: assignedTo, // Use the processed assignedTo value
-      startDate: formatDateForAPI(formData.value.startDate),
-      deadlineDate: formatDateForAPI(formData.value.deadlineDate),
+      startDate: formatDateForAPI(formData.value.startDate!),
+      deadlineDate: formatDateForAPI(formData.value.deadlineDate!),
     })
 
     // Reset form
     formData.value = {
       title: '',
       description: '',
-      duration: 8,
+      duration: 8, // Will be calculated automatically when dates are set
       workflowId: props.workflowId,
-      sequenceNumber: formData.value.sequenceNumber + 1, // Increment for next step
+      sequenceNumber: 1, // Default sequence number (backend may handle ordering)
       requiredRole: Role.TEAM_MEMBER,
-      requiredRoleGuid: undefined,
       assignedTo: undefined,
       startDate: undefined,
       deadlineDate: undefined,
     }
     selectedAssignees.value = []
-    selectedRoleGuid.value = null
 
     emit('created', workStep.id)
   } catch (err) {
@@ -507,6 +541,13 @@ async function handleSubmit() {
   background: var(--color-surface-hover);
 }
 
+.assignee-checkbox--select-all {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-surface);
+}
+
 .checkbox-input {
   width: 18px;
   height: 18px;
@@ -519,6 +560,11 @@ async function handleSubmit() {
   font-size: var(--text-sm);
   color: var(--color-text-primary);
   user-select: none;
+}
+
+.checkbox-label--select-all {
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
 }
 
 .no-users {
@@ -582,6 +628,24 @@ async function handleSubmit() {
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   margin-top: var(--spacing-xs);
+}
+
+.duration-display {
+  padding: var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.duration-value {
+  margin-top: var(--spacing-xs);
+}
+
+.duration-value strong {
+  font-size: var(--text-lg);
+  color: var(--color-primary);
+  display: block;
+  margin-bottom: var(--spacing-xs);
 }
 
 /* Enhanced Date Picker Styles */

@@ -1,9 +1,3 @@
-/**
- * useAssignment Composable
- * ViewModel layer - Business logic for assignment management
- * Provides a clean interface for assignment operations with validation
- */
-
 import { ref, computed } from 'vue'
 import { useApi } from './useApi'
 import type { AssignmentDto } from '@/types/api'
@@ -15,9 +9,6 @@ export function useAssignment() {
   const error = ref<Error | null>(null)
   const assignments = ref<AssignmentDto[]>([])
 
-  /**
-   * Load all assignments
-   */
   const loadAllAssignments = async (): Promise<AssignmentDto[]> => {
     loading.value = true
     error.value = null

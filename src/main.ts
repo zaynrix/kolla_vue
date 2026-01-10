@@ -79,17 +79,30 @@ if (typeof window !== 'undefined') {
   const restored = await restoreUser()
   if (restored) {
     console.log('[App] User session restored successfully')
-    
-    // Start SignalR connection for real-time updates
-    try {
-      const { getSignalRService } = await import('@/services/signalr/signalrService')
-      const signalRService = getSignalRService()
-      await signalRService.start()
-      console.log('[App] SignalR connection started')
-    } catch (error) {
-      console.error('[App] Failed to start SignalR connection:', error)
-      // Don't block app startup if SignalR fails
-    }
   }
+  
+  // Always start SignalR connection for real-time updates (even if user not restored)
+  // This enables real-time updates across all browser tabs/windows
+  // When a workflow manager updates a work step, SignalR broadcasts the change
+  // and all actors with their work step lists open will see updates automatically
+  try {
+    const { getSignalRService } = await import('@/services/signalr/signalrService')
+    const signalRService = getSignalRService()
+    await signalRService.start()
+    
+    // Verify connection
+    if (signalRService.isConnected()) {
+      console.log('[App] ✅ SignalR connected - real-time updates enabled')
+      console.log('[App] Changes made by workflow managers will appear automatically in actor views')
+    } else {
+      console.warn('[App] ⚠️ SignalR connection failed - real-time updates disabled')
+      console.warn('[App] Users will need to refresh to see updates')
+    }
+  } catch (error) {
+    console.error('[App] ❌ Failed to start SignalR connection:', error)
+    console.error('[App] Real-time updates will not work - users must refresh to see changes')
+    // Don't block app startup if SignalR fails, but log the error
+  }
+  
   app.mount('#app')
 })()

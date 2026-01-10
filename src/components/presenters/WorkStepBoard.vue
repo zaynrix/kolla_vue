@@ -171,15 +171,12 @@ const statusColumns = [
 
 function getWorkStepsByStatus(status: TaskStatus): WorkStep[] {
   return props.workSteps.filter((ws) => {
-    // Use optimistic status if available, otherwise use actual status
     const displayStatus = optimisticStatus.value.get(ws.id) || ws.status
     return displayStatus === status
   })
 }
 
 function getPriority(workStep: WorkStep): Priority {
-  // Priority should be calculated based on remaining duration of ALL remaining work steps
-  // Use the calculated priority from the store instead of the backend priority
   const workStepStore = useWorkStepStore()
   const now = new Date()
   return workStep.manualPriority || workStepStore.calculatePriority(workStep, now) || PriorityEnum.LONG_TERM
@@ -199,7 +196,7 @@ function isUrgent(workStep: WorkStep): boolean {
 }
 
 function isDeadlineApproaching(workStep: WorkStep): boolean {
-  // This would check workflow deadline
+  
   return false
 }
 
@@ -312,7 +309,6 @@ function handleDragOver(status: TaskStatus, event: DragEvent) {
     event.dataTransfer.dropEffect = 'move'
   }
   
-  // Only allow drop if it's a different status
   if (draggedWorkStep.value && draggedWorkStep.value.status !== status) {
     dragOverColumn.value = status
   } else {
@@ -321,7 +317,7 @@ function handleDragOver(status: TaskStatus, event: DragEvent) {
 }
 
 function handleDragLeave(status: TaskStatus, event: DragEvent) {
-  // Check if we're actually leaving the column (not just entering a child)
+  
   const relatedTarget = event.relatedTarget as HTMLElement | null
   const currentTarget = event.currentTarget as HTMLElement | null
   if (!relatedTarget || !currentTarget) {
@@ -347,9 +343,7 @@ function handleDrop(targetStatus: TaskStatus, event: DragEvent) {
   const workStepId = draggedWorkStep.value.id
   const oldStatus = draggedWorkStep.value.status
   
-  // Only proceed if status actually changed
   if (oldStatus !== targetStatus) {
-    // Optimistically update ONLY this card's status immediately (UI updates instantly)
     optimisticStatus.value.set(workStepId, targetStatus)
     
     // Emit the status change (API call happens in parent)
@@ -369,7 +363,6 @@ function handleDragEnd() {
 }
 
 function handleCardClick(workStep: WorkStep, event: MouseEvent) {
-  // Don't trigger select if clicking on select dropdown, buttons, or other interactive elements
   const target = event.target as HTMLElement
   if (
     target.tagName === 'SELECT' || 
@@ -405,17 +398,14 @@ function handleWorkflowAssign(workStep: WorkStep, event: Event) {
   }
 }
 
-// Clear optimistic status when actual workStep status updates from store
 watch(() => props.workSteps, (newSteps) => {
   newSteps.forEach((step) => {
     const optimistic = optimisticStatus.value.get(step.id)
     if (optimistic !== undefined) {
-      // If the store status matches optimistic, clear it (API confirmed)
       if (optimistic === step.status) {
         optimisticStatus.value.delete(step.id)
       }
-      // If store status differs from optimistic, keep optimistic until API confirms
-      // This handles the case where API hasn't responded yet
+      
     }
   })
 }, { deep: true })
@@ -483,6 +473,8 @@ watch(() => props.workSteps, (newSteps) => {
     0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all var(--transition-base);
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .board-column::before {
@@ -544,7 +536,7 @@ watch(() => props.workSteps, (newSteps) => {
   align-items: center;
   margin-bottom: 1.25rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #f3f4f6;
+  border-bottom: 2px solid var(--color-border);
   position: relative;
 }
 
@@ -571,8 +563,8 @@ watch(() => props.workSteps, (newSteps) => {
 
 .column-count {
   font-size: 0.8125rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
   padding: 0.25rem 0.625rem;
   border-radius: 12px;
   font-weight: 600;
@@ -594,6 +586,8 @@ watch(() => props.workSteps, (newSteps) => {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
   margin-top: var(--spacing-sm);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .column-content::-webkit-scrollbar {
@@ -605,44 +599,46 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .column-content::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--color-border);
   border-radius: 3px;
 }
 
 .column-content::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--color-text-tertiary);
 }
 
 .column-content--drag-over {
-  background-color: rgba(37, 99, 235, 0.08);
-  border: 2px dashed #3b82f6;
+  background-color: var(--color-primary-light);
+  border: 2px dashed var(--color-primary);
   border-radius: 8px;
+  opacity: 0.5;
 }
 
 .column-empty {
   text-align: center;
-  color: #9ca3af;
+  color: var(--color-text-tertiary);
   padding: 3rem 1rem;
   font-style: italic;
   font-size: 0.875rem;
-  border: 2px dashed #e5e7eb;
+  border: 2px dashed var(--color-border);
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--color-surface-hover);
 }
 
 .board-card {
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 10px;
   padding: 1.5rem;
   cursor: grab;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e5e7eb;
-  border-left: 3px solid #d1d5db;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
   position: relative;
   overflow: visible;
   user-select: none;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
   touch-action: none;
@@ -652,6 +648,7 @@ watch(() => props.workSteps, (newSteps) => {
   min-height: 280px;
   height: auto;
   flex-shrink: 0;
+  margin: 0;
 }
 
 .board-card:active {
@@ -681,14 +678,14 @@ watch(() => props.workSteps, (newSteps) => {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #d1d5db;
+  background: var(--color-border);
   transition: all 0.2s ease;
 }
 
 .board-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
-  border-color: #cbd5e1;
+  border-color: var(--color-primary-light);
 }
 
 .board-card:hover::before {
@@ -697,30 +694,30 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .card--urgent {
-  border-left-color: #ef4444;
-  background: linear-gradient(to right, #fef2f2 0%, #ffffff 5%);
+  border-left-color: var(--color-error);
+  background: var(--color-surface);
 }
 
 .card--urgent::before {
-  background: #ef4444;
+  background: var(--color-error);
 }
 
 .card--approaching {
-  border-left-color: #f59e0b;
-  background: linear-gradient(to right, #fffbeb 0%, #ffffff 5%);
+  border-left-color: var(--color-warning);
+  background: var(--color-surface);
 }
 
 .card--approaching::before {
-  background: #f59e0b;
+  background: var(--color-warning);
 }
 
 .card--completed {
-  opacity: 1;
-  background: #ffffff;
+  opacity: 0.8;
+  background: var(--color-surface-hover);
 }
 
 .card--completed::before {
-  background: #d1d5db;
+  background: var(--color-border);
 }
 
 .card-header {
@@ -732,10 +729,10 @@ watch(() => props.workSteps, (newSteps) => {
 
 .card-sequence {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   font-weight: 600;
   font-family: 'Monaco', 'Menlo', monospace;
-  background: #f3f4f6;
+  background: var(--color-surface-hover);
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
 }
@@ -750,25 +747,25 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .priority--short-term {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 .priority--mid-term {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .priority--long-term {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-light);
+  color: var(--color-info);
 }
 
 .card-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-primary);
   line-height: 1.5;
   word-break: break-word;
   display: block;
@@ -778,7 +775,7 @@ watch(() => props.workSteps, (newSteps) => {
 .card-description {
   margin: 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   line-height: 1.6;
   word-break: break-word;
   flex: 1 1 auto;
@@ -792,14 +789,14 @@ watch(() => props.workSteps, (newSteps) => {
   gap: 0.5rem;
   flex-wrap: wrap;
   padding-top: 0.75rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-border);
   flex-shrink: 0;
   margin-top: auto;
 }
 
 .card-duration {
   font-weight: 600;
-  color: #4b5563;
+  color: var(--color-text-primary);
   font-size: 0.8125rem;
   display: flex;
   align-items: center;
@@ -813,8 +810,8 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .card-assigned {
-  background: #eff6ff;
-  color: #1e40af;
+  background: var(--color-info-light);
+  color: var(--color-info);
   padding: 0.25rem 0.625rem;
   border-radius: 6px;
   font-size: 0.75rem;
@@ -826,8 +823,8 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .card-assigned--unassigned {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .card-deadline {
@@ -835,13 +832,14 @@ watch(() => props.workSteps, (newSteps) => {
   align-items: center;
   gap: 0.375rem;
   font-size: 0.75rem;
-  color: #dc2626;
+  color: var(--color-error);
   margin-top: 0.5rem;
   padding: 0.375rem 0.5rem;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error);
   border-radius: 4px;
   font-weight: 500;
+  opacity: 0.8;
 }
 
 .deadline-icon {
@@ -860,7 +858,7 @@ watch(() => props.workSteps, (newSteps) => {
 .card-actions {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -877,9 +875,9 @@ watch(() => props.workSteps, (newSteps) => {
 .card-action-btn {
   flex: 1;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--color-surface);
   color: var(--color-text-primary);
   font-size: 0.75rem;
   font-weight: 500;
@@ -891,7 +889,7 @@ watch(() => props.workSteps, (newSteps) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-action-btn:hover {
@@ -900,63 +898,63 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .card-action-btn--edit {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.2);
-  color: #2563eb;
+  background: var(--color-info-light);
+  border-color: var(--color-info);
+  color: var(--color-info);
 }
 
 .card-action-btn--edit:hover {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background: var(--color-info);
+  color: var(--color-text-inverse);
+  border-color: var(--color-info);
 }
 
 .card-action-btn--reassign {
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: var(--color-success-light);
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .card-action-btn--reassign:hover {
-  background: #10b981;
-  color: white;
-  border-color: #10b981;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border-color: var(--color-success);
 }
 
 .card-action-btn--delete {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  background: var(--color-error-light);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }
 
 .card-action-btn--delete:hover {
-  background: #ef4444;
-  color: white;
-  border-color: #ef4444;
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  border-color: var(--color-error);
 }
 
 .status-select {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--color-surface);
   font-size: 0.8125rem;
-  color: #111827;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all 0.15s ease;
   font-weight: 500;
 }
 
 .status-select:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .status-select:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .workflow-assign-section {
@@ -964,8 +962,8 @@ watch(() => props.workSteps, (newSteps) => {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
   margin-top: 0.5rem;
 }
@@ -973,31 +971,31 @@ watch(() => props.workSteps, (newSteps) => {
 .workflow-assign-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #92400e;
+  color: var(--color-warning);
 }
 
 .workflow-select {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #fbbf24;
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--color-surface);
   font-size: 0.8125rem;
-  color: #111827;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all 0.15s ease;
   font-weight: 500;
 }
 
 .workflow-select:hover {
-  border-color: #f59e0b;
-  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
+  border-color: var(--color-warning);
+  box-shadow: var(--shadow-sm);
 }
 
 .workflow-select:focus {
   outline: none;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+  border-color: var(--color-warning);
+  box-shadow: 0 0 0 3px var(--color-warning-light);
 }
 
 /* Responsive */

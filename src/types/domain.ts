@@ -1,23 +1,15 @@
-/**
- * Domain Models - Core business entities
- * No UI or technical dependencies for high testability
- */
-
-// Priority enum matching the data model: ShortTerm, MidTerm, LongTerm
 export enum Priority {
   SHORT_TERM = 'ShortTerm', // ShortTerm
   MID_TERM = 'MidTerm', // MidTerm
   LONG_TERM = 'LongTerm', // LongTerm
 }
 
-// AssignmentStatus enum matching the data model: Planned, InProgress, Completed
 export enum AssignmentStatus {
   PLANNED = 'Planned',
   IN_PROGRESS = 'InProgress',
   COMPLETED = 'Completed',
 }
 
-// Legacy TaskStatus for backward compatibility
 export enum TaskStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -31,41 +23,31 @@ export enum Role {
   ADMIN = 'ADMIN',
 }
 
-/**
- * WorkStep (Arbeitsschritt) - Represents a single step in a sequential workflow
- * Each work step has exactly one role and can be assigned to multiple actors
- */
 export interface WorkStep {
   id: string
   title: string
   description?: string
-  duration: number // in hours
+  duration: number
   status: TaskStatus
   priority: Priority
   workflowId: string
-  sequenceNumber: number // Order in sequential workflow (1, 2, 3, ...)
-  requiredRole: Role // Exactly one role required for this step
-  assignedTo?: string | string[] // User ID(s) of assigned actor(s) - supports single or multiple assignments
+  sequenceNumber: number
+  requiredRole: Role
+  assignedTo?: string | string[]
   completedAt?: Date
   createdAt: Date
   updatedAt: Date
   startDate?: Date // Start date for the assignment
   deadlineDate?: Date // Deadline date for the assignment
-  // Manual priority override by workflow manager
   manualPriority?: Priority
 }
 
-/**
- * Objective - Legacy name, kept for compatibility
- * In Kolla context, this represents a work step
- * @deprecated Use WorkStep instead
- */
 export interface Objective {
   id: string
   title: string
   description?: string
   deadline: Date
-  duration: number // in hours
+  duration: number
   status: TaskStatus
   priority: Priority
   workflowId: string
@@ -74,21 +56,17 @@ export interface Objective {
   updatedAt: Date
 }
 
-/**
- * Sequential Workflow - Kolla workflow with ordered work steps
- * Steps are executed sequentially, automatically assigned to next actor
- */
 export interface Workflow {
   id: string
   name: string
   description?: string
-  workSteps: WorkStep[] // Sequential work steps
-  objectives: Objective[] // Legacy support
+  workSteps: WorkStep[]
+  objectives: Objective[]
   createdBy: string
-  workflowManagerId: string // User ID of workflow manager
-  tenantId?: string // Multi-tenancy support
-  deadline?: Date // Overall workflow deadline
-  completionDate?: Date // Actual completion date
+  workflowManagerId: string
+  tenantId?: string
+  deadline?: Date
+  completionDate?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -102,9 +80,6 @@ export interface User {
   qualifications?: string[] // Qualifications for role-based assignment
 }
 
-/**
- * Actor - Can be a User or System (for future extensibility)
- */
 export type Actor = User | SystemActor
 
 export interface SystemActor {
@@ -124,14 +99,10 @@ export interface Notification {
   createdAt: Date
   relatedEntityId?: string
   relatedEntityType?: 'WORKFLOW' | 'WORKSTEP' | 'OBJECTIVE' | 'TASK'
-  // Workflow manager specific notifications
   workflowId?: string
   workStepId?: string
 }
 
-/**
- * Workflow Progress - For workflow manager deadline tracking
- */
 export interface WorkflowProgress {
   workflowId: string
   totalSteps: number

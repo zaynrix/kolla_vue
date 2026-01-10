@@ -1,8 +1,3 @@
-/**
- * API Mappers
- * Maps between Backend DTOs and Frontend Domain Models
- */
-
 import type {
   AssignmentDto,
   ActorDto,
@@ -19,10 +14,6 @@ import type {
 } from '@/types/domain'
 import { Priority as PriorityEnum, TaskStatus as TaskStatusEnum, Role as RoleEnum } from '@/types/domain'
 
-/**
- * Map backend Priority number to frontend Priority enum
- * Backend: 0=ShortTerm, 1=MidTerm, 2=LongTerm
- */
 export function mapPriorityFromBackend(priority?: number): Priority {
   if (priority === undefined || priority === null) {
     return PriorityEnum.LONG_TERM
@@ -108,15 +99,20 @@ export function mapAssignmentToWorkStep(
   sequenceNumber: number,
   requiredRole: Role
 ): WorkStep {
-  // Calculate duration from startDate and deadlineDate if available
-  let duration = 8 // Default
-  if (assignment.startDate && assignment.deadlineDate) {
-    const start = new Date(assignment.startDate)
+  // Calculate duration as time remaining from now until deadline
+  // Duration represents the time left to finish the task
+  let duration = 0 // Default to 0 if no deadline
+  if (assignment.deadlineDate) {
     const deadline = new Date(assignment.deadlineDate)
-    if (!isNaN(start.getTime()) && !isNaN(deadline.getTime()) && deadline > start) {
-      const diffMs = deadline.getTime() - start.getTime()
-      duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
-      if (duration <= 0) duration = 8 // Fallback to default if invalid
+    const now = new Date()
+    if (!isNaN(deadline.getTime())) {
+      if (deadline > now) {
+        const diffMs = deadline.getTime() - now.getTime()
+        duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+        if (duration <= 0) duration = 0 // If deadline is very soon or passed, show 0
+      } else {
+        duration = 0 // Deadline has passed
+      }
     }
   }
   

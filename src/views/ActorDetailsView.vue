@@ -91,15 +91,13 @@ const error = ref<Error | null>(null)
 
 const actorGuid = route.params.id as string
 
-// Check if current user is admin (has role with isAdmin flag)
+
 const isAdmin = computed(() => userStore.isAdmin)
 const currentUserGuid = computed(() => userStore.currentUser?.id)
 
-// Check if user can view this actor's details
+
 const canViewActor = computed(() => {
-  // Admin can view any actor
   if (isAdmin.value) return true
-  // Non-admin can only view their own details
   return currentUserGuid.value === actorGuid
 })
 
@@ -114,7 +112,6 @@ async function loadActorDetails() {
   try {
     actor.value = await getActor(actorGuid)
     
-    // Check permissions: non-admin users can only view their own details
     if (!canViewActor.value) {
       error.value = new Error('You do not have permission to view this actor\'s details. You can only view your own assignments.')
       loading.value = false
@@ -135,10 +132,9 @@ async function loadAssignments() {
 
   loadingAssignments.value = true
   try {
-    // Get assignment GUIDs for this actor
+    
     const assignmentGuids = await api.actor.getAllAssignments(actorGuid)
     
-    // Fetch full assignment details
     const loadedAssignments = await Promise.allSettled(
       assignmentGuids.map((guid: string) => api.assignment.getAssignment(guid))
     )
@@ -149,14 +145,12 @@ async function loadAssignments() {
       .map(result => result.value)
   } catch (err) {
     console.error('Failed to load assignments:', err)
-    // Don't set error here, just log it - actor details are more important
   } finally {
     loadingAssignments.value = false
   }
 }
 
 function goBack() {
-  // Non-admin users go back to their dashboard, admin goes to actors list
   if (isAdmin.value) {
     router.push('/users')
   } else {

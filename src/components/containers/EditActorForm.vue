@@ -18,13 +18,14 @@
       </div>
 
       <div class="form-group">
-        <label for="edit-actor-role" class="form-label">Role</label>
+        <label for="edit-actor-role" class="form-label">Role *</label>
         <select
           id="edit-actor-role"
           v-model="formData.roleGuid"
           class="form-select"
+          required
         >
-          <option value="">No role assigned</option>
+          <option value="">Select a role</option>
           <option v-for="role in roles" :key="role.guid" :value="role.guid">
             {{ role.displayName }}
           </option>
@@ -99,11 +100,17 @@ async function handleSubmit() {
       return
     }
 
+    // Validate role is selected
+    if (!formData.value.roleGuid || formData.value.roleGuid === '') {
+      error.value = 'Role is required'
+      return
+    }
+
     // Update each field separately (as per backend API design)
     if (formData.value.displayName.trim() !== props.actor.displayName) {
       await updateActorDisplayName(props.actor.guid, formData.value.displayName.trim())
     }
-    const newRoleGuid = formData.value.roleGuid && formData.value.roleGuid !== '' ? formData.value.roleGuid : undefined
+    const newRoleGuid = formData.value.roleGuid
     const currentRoleGuid = props.actor.role?.guid
     if (newRoleGuid !== currentRoleGuid) {
       await updateActorRole(props.actor.guid, newRoleGuid)

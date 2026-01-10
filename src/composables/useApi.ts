@@ -1,8 +1,3 @@
-/**
- * Dependency Injection for API Services
- * Allows mocking in tests and flexible service configuration
- */
-
 import { inject, provide, type InjectionKey } from 'vue'
 import type { ApiServices } from '@/services/api'
 import { defaultApiServices } from '@/services/api'
@@ -18,6 +13,5 @@ export function useApi(): ApiServices {
   return services
 }
 
-// Re-export for convenience
 export { defaultApiServices }
 

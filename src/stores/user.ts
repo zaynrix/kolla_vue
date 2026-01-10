@@ -1,19 +1,12 @@
-/**
- * User Store - Model Layer
- * Centralized reactive state management for user and role information
- */
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types/domain'
 import { Role } from '@/types/domain'
 
 export const useUserStore = defineStore('user', () => {
-  // State
   const currentUser = ref<User | null>(null)
   const users = ref<User[]>([])
 
-  // Getters
   const isAuthenticated = computed(() => currentUser.value !== null)
 
   const userRole = computed(() => currentUser.value?.role || null)
@@ -30,12 +23,9 @@ export const useUserStore = defineStore('user', () => {
     return currentUser.value?.role === Role.TEAM_MEMBER
   })
 
-  // Actions
   function setCurrentUser(user: User | null) {
     currentUser.value = user
-    // Save to localStorage for persistence across page reloads
     if (user) {
-      // Store actorGuid for restoration
       const actorGuid = user.id // user.id is the actor guid
       localStorage.setItem('currentUser', JSON.stringify({ 
         actorGuid,
@@ -83,8 +73,6 @@ export const useUserStore = defineStore('user', () => {
       const saved = localStorage.getItem('currentUser')
       if (saved) {
         const { actorGuid, displayName } = JSON.parse(saved)
-        // User will be restored by the app on mount
-        // This just marks that we should restore
       }
     } catch (err) {
       console.error('Failed to restore user from localStorage:', err)
@@ -96,18 +84,15 @@ export const useUserStore = defineStore('user', () => {
   initialize()
 
   return {
-    // State
     currentUser,
     users,
 
-    // Getters
     isAuthenticated,
     userRole,
     isWorkflowManager,
     isAdmin,
     isTeamMember,
 
-    // Actions
     setCurrentUser,
     setUsers,
     addUser,

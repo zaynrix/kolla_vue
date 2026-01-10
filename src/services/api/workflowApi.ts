@@ -1,8 +1,3 @@
-/**
- * Workflow API Service
- * Handles all workflow-related API calls
- */
-
 import type { ApiClient } from './client'
 import type { Workflow } from '@/types/domain'
 import type {

@@ -1,9 +1,3 @@
-/**
- * useAuthorization Composable
- * ViewModel layer - Authorization and access control
- * Implements security requirement: access check ≤0.5 seconds
- */
-
 import { computed } from 'vue'
 import { AuthorizationService } from '@/services/authorization/authorizationService'
 import { useUserStore } from '@/stores/user'
@@ -15,10 +9,6 @@ const authorizationService = new AuthorizationService()
 export function useAuthorization() {
   const userStore = useUserStore()
 
-  /**
-   * Check if current user can access a work step
-   * Security requirement: ≤0.5 seconds
-   */
   const canAccessWorkStep = (
     workStep: DomainWorkStep
   ): AuthorizationResult => {
@@ -32,9 +22,6 @@ export function useAuthorization() {
     )
   }
 
-  /**
-   * Check if current user can assign a work step
-   */
   const canAssignWorkStep = (
     workStep: DomainWorkStep,
     assigneeId: string
@@ -50,9 +37,6 @@ export function useAuthorization() {
     )
   }
 
-  /**
-   * Check if current user can manage a workflow
-   */
   const canManageWorkflow = (workflowId: string): AuthorizationResult => {
     if (!userStore.currentUser) {
       return { allowed: false, reason: 'User not authenticated' }
@@ -64,9 +48,6 @@ export function useAuthorization() {
     )
   }
 
-  /**
-   * Get filtered work steps that current user can access
-   */
   const getAccessibleWorkSteps = (
     workSteps: DomainWorkStep[]
   ): DomainWorkStep[] => {
@@ -78,16 +59,10 @@ export function useAuthorization() {
     })
   }
 
-  /**
-   * Check if user is workflow manager
-   */
   const isWorkflowManager = computed(() => {
     return userStore.isWorkflowManager
   })
 
-  /**
-   * Check if user is admin
-   */
   const isAdmin = computed(() => {
     return userStore.isAdmin
   })

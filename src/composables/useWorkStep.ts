@@ -1,9 +1,3 @@
-/**
- * useWorkStep Composable
- * ViewModel layer - Business logic for work step management
- * Handles sequential workflow assignment and completion
- */
-
 import { ref, computed, type Ref } from 'vue'
 import { useWorkStepStore } from '@/stores/workStep'
 import { useNotificationStore } from '@/stores/notification'
@@ -22,9 +16,6 @@ export function useWorkStep() {
   const loading = ref(false)
   const error = ref<Error | null>(null)
 
-  /**
-   * Load all work steps from API
-   */
   const loadWorkSteps = async () => {
     loading.value = true
     error.value = null
@@ -39,15 +30,11 @@ export function useWorkStep() {
     }
   }
 
-  /**
-   * Create a new work step
-   */
   const createWorkStep = async (request: CreateWorkStepRequest): Promise<WorkStep> => {
     loading.value = true
     error.value = null
     try {
       const workStep = await api.workStep.createWorkStep(request)
-      // Add to store - Vue reactivity will update UI automatically
       workStepStore.addWorkStep(workStep)
 
       // Notify assigned users if work step was assigned
@@ -60,8 +47,8 @@ export function useWorkStep() {
           notificationStore.addNotification({
             id: `notification-assign-${Date.now()}-${userId}-${Math.random()}`,
             userId,
-            title: 'New Work Step Assigned',
-            message: `You have been assigned a new work step: "${workStep.title}"`,
+            title: 'New Task Assigned',
+            message: `You have been assigned a new task: "${workStep.title}"`,
             type: 'INFO',
             read: false,
             createdAt: new Date(),
@@ -83,18 +70,31 @@ export function useWorkStep() {
   }
 
   /**
-   * Load work steps assigned to current user
+   * Load work steps assigned to the current user
+   * Optimized for fast access to personal task list (< 0.5s target)
+   * Uses dedicated API endpoint for assigned work steps (more efficient than loading all)
    */
   const loadMyWorkSteps = async () => {
     if (!userStore.currentUser) return
 
+    const loadStartTime = performance.now()
     loading.value = true
     error.value = null
     try {
+      // Use dedicated endpoint for assigned work steps - faster than loading all
       const workSteps = await api.workStep.getAssignedWorkSteps(
         userStore.currentUser.id
       )
       workStepStore.setWorkSteps(workSteps)
+      
+      const loadEndTime = performance.now()
+      const loadDuration = loadEndTime - loadStartTime
+      console.log(`[useWorkStep] Personal task list loaded in ${loadDuration.toFixed(2)}ms`)
+      
+      // Log warning if loading takes too long
+      if (loadDuration > 500) {
+        console.warn(`[useWorkStep] Personal task list loading exceeded 500ms target: ${loadDuration.toFixed(2)}ms`)
+      }
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to load work steps')
       throw err
@@ -103,44 +103,34 @@ export function useWorkStep() {
     }
   }
 
-  /**
-   * Complete a work step and automatically assign next step
-   * Implements sequential workflow logic
-   * Updates store directly for real-time UI updates
-   */
   const completeWorkStep = async (workStepId: string) => {
     loading.value = true
     error.value = null
     try {
-      // Mark work step as completed
       const completedStep = await api.workStep.updateWorkStep(workStepId, {
         status: TaskStatusEnum.COMPLETED,
         completedAt: new Date().toISOString(),
       })
 
-      // Update store with completed step - Vue reactivity will update UI automatically
       workStepStore.updateWorkStep(completedStep)
 
-      // Get workflow to find next step
       const workflow = workStepStore.getWorkflowForStep(workStepId)
       if (!workflow) {
         throw new Error('Workflow not found for work step')
       }
 
-      // Find next sequential work step
+      // Always notify workflow manager when a task is completed
+      await notifyWorkflowManagerTaskCompleted(workflow.id, completedStep, workflow.workflowManagerId)
+
       const nextStep = findNextWorkStep(workflow.id, completedStep.sequenceNumber)
 
       if (nextStep) {
-        // Automatically assign next step to next available actor with required role
         const assignedStep = await assignNextWorkStep(nextStep.id, nextStep.requiredRole)
-        
-        // Store is already updated by assignNextWorkStep, UI updates automatically
-        // No need to reload - Vue reactivity handles it
-
-        // Notify workflow manager about progress
-        await notifyWorkflowManager(workflow.id, completedStep, assignedStep || nextStep)
+        // Additional notification if next step was assigned
+        if (assignedStep) {
+          await notifyWorkflowManager(workflow.id, completedStep, assignedStep)
+        }
       } else {
-        // Workflow completed
         await notifyWorkflowCompletion(workflow.id)
       }
     } catch (err) {
@@ -151,9 +141,6 @@ export function useWorkStep() {
     }
   }
 
-  /**
-   * Find next work step in sequence
-   */
   function findNextWorkStep(
     workflowId: string,
     currentSequenceNumber: number
@@ -165,29 +152,19 @@ export function useWorkStep() {
     )
   }
 
-  /**
-   * Automatically assign next work step to available actor with required role
-   * Returns the assigned work step for further processing
-   */
   async function assignNextWorkStep(
     workStepId: string,
     requiredRole: string
   ): Promise<WorkStep | null> {
     try {
-      // Find available users with required role
-      // This would typically query backend for available actors
-      // For prototype, simulate assignment
       const availableActors = await api.workStep.getAvailableActors(requiredRole)
 
       if (availableActors.length > 0 && availableActors[0]) {
-        // Assign to first available actor (could implement load balancing)
         const assigneeId = availableActors[0].id
         const assignedStep = await api.workStep.assignWorkStep(workStepId, assigneeId)
 
-        // Update work step in store - Vue reactivity will update UI automatically
         workStepStore.updateWorkStep(assignedStep)
 
-        // Notify assigned actor(s)
         const assignedUserIds = Array.isArray(assignedStep.assignedTo) 
           ? assignedStep.assignedTo 
           : assignedStep.assignedTo 
@@ -196,15 +173,16 @@ export function useWorkStep() {
         
         assignedUserIds.forEach((userId) => {
           notificationStore.addNotification({
-            id: `notification-${Date.now()}-${userId}`,
+            id: `notification-auto-assign-${Date.now()}-${userId}-${Math.random()}`,
             userId,
-            title: 'New Work Step Assigned',
-            message: `You have been assigned a new work step`,
+            title: 'New Task Assigned',
+            message: `You have been automatically assigned to task: "${assignedStep.title}"`,
             type: 'INFO',
             read: false,
             createdAt: new Date(),
             relatedEntityId: workStepId,
             relatedEntityType: 'WORKSTEP',
+            workflowId: assignedStep.workflowId,
             workStepId,
           })
         })
@@ -213,15 +191,72 @@ export function useWorkStep() {
       }
       return null
     } catch (err) {
-      // For prototype, if API call fails, log error but continue
       console.warn('Failed to assign work step automatically:', err)
       return null
     }
   }
 
   /**
-   * Notify workflow manager about work step completion
+   * Notify workflow manager and admins when a task is completed
    */
+  async function notifyWorkflowManagerTaskCompleted(
+    workflowId: string,
+    completedStep: WorkStep,
+    workflowManagerId: string
+  ): Promise<void> {
+    // Notify workflow manager
+    if (workflowManagerId && workflowManagerId !== 'system') {
+      notificationStore.addNotification({
+        id: `notification-completed-${Date.now()}-${workflowManagerId}`,
+        userId: workflowManagerId,
+        title: 'Task Completed',
+        message: `Task "${completedStep.title}" has been completed by a user.`,
+        type: 'SUCCESS',
+        read: false,
+        createdAt: new Date(),
+        relatedEntityId: workflowId,
+        relatedEntityType: 'WORKFLOW',
+        workflowId,
+        workStepId: completedStep.id,
+      })
+    }
+
+    // Notify all admins
+    try {
+      const actorGuids = await api.actor.getAllActors()
+      const actors = await Promise.all(
+        actorGuids.map((guid: string) => api.actor.getActor(guid))
+      )
+      
+      // Find all admin users
+      const adminActors = actors.filter((actor) => actor.role?.isAdmin === true)
+      
+      // Send notification to each admin
+      adminActors.forEach((adminActor) => {
+        notificationStore.addNotification({
+          id: `notification-completed-admin-${Date.now()}-${adminActor.guid}-${Math.random()}`,
+          userId: adminActor.guid,
+          title: 'Task Completed',
+          message: `Task "${completedStep.title}" has been completed by a user.`,
+          type: 'SUCCESS',
+          read: false,
+          createdAt: new Date(),
+          relatedEntityId: workflowId,
+          relatedEntityType: 'WORKFLOW',
+          workflowId,
+          workStepId: completedStep.id,
+        })
+      })
+      
+      if (adminActors.length > 0) {
+        console.log(`[useWorkStep] Notified ${adminActors.length} admin(s) about task completion`)
+      }
+    } catch (err) {
+      console.warn('[useWorkStep] Failed to notify admins about task completion:', err)
+      // Don't throw - this is not critical, workflow manager notification already sent
+    }
+  }
+
   async function notifyWorkflowManager(
     workflowId: string,
     completedStep: WorkStep,
@@ -230,8 +265,13 @@ export function useWorkStep() {
     const workflow = workStepStore.getWorkflowForStep(completedStep.id)
     if (!workflow) return
 
+    if (!workflow.workflowManagerId || workflow.workflowManagerId === 'system') {
+      console.warn('[useWorkStep] Cannot notify workflow manager: invalid workflowManagerId')
+      return
+    }
+
     notificationStore.addNotification({
-      id: `notification-${Date.now()}`,
+      id: `notification-next-step-${Date.now()}-${workflow.workflowManagerId}`,
       userId: workflow.workflowManagerId,
       title: 'Work Step Completed',
       message: `Work step "${completedStep.title}" completed. Next step "${nextStep.title}" assigned.`,
@@ -245,9 +285,6 @@ export function useWorkStep() {
     })
   }
 
-  /**
-   * Notify workflow manager about workflow completion
-   */
   async function notifyWorkflowCompletion(workflowId: string): Promise<void> {
     const workflow = workStepStore.getWorkflowForStep(workflowId)
     if (!workflow) return
@@ -267,8 +304,10 @@ export function useWorkStep() {
   }
 
   /**
-   * Update work step (e.g., change status, priority)
-   * Updates store directly for real-time UI updates via Vue reactivity
+   * Update a work step
+   * Real-time updates: This automatically updates the store, which triggers
+   * reactivity in all views. Actors with their work step lists open will
+   * see changes immediately without needing to refresh.
    */
   const updateWorkStep = async (
     id: string,
@@ -279,7 +318,6 @@ export function useWorkStep() {
     try {
       console.log('[useWorkStep] Updating work step:', id, 'with request:', request)
       
-      // Get old work step to compare assignments and preserve workflowId/sequenceNumber
       const oldWorkStep = workStepStore.getWorkStepById(id)
       if (!oldWorkStep) {
         throw new Error(`Work step with id ${id} not found in store`)
@@ -291,13 +329,14 @@ export function useWorkStep() {
       
       console.log('[useWorkStep] Updated work step from API:', workStep)
       
-      // Update store - Vue reactivity will automatically update UI
-      // No need to reload - the board will update in real-time
+      // Update store - this triggers automatic reactivity updates in all views
+      // Vue reactivity will automatically update all computed properties that depend on workSteps
       workStepStore.updateWorkStep(workStep)
       
-      console.log('[useWorkStep] Store updated successfully')
-
-      // Notify users if assignment changed (reassign)
+      console.log('[useWorkStep] Store updated successfully - all views will update automatically')
+      console.log('[useWorkStep] SignalR will broadcast this change to other browser tabs/windows')
+      
+      // Notify users when assigned to a task
       if (request.assignedTo !== undefined && oldWorkStep) {
         const oldAssignees = Array.isArray(oldWorkStep.assignedTo)
           ? oldWorkStep.assignedTo
@@ -311,10 +350,10 @@ export function useWorkStep() {
         newAssignees.forEach((userId) => {
           if (!oldAssignees.includes(userId)) {
             notificationStore.addNotification({
-              id: `notification-reassign-${Date.now()}-${userId}`,
+              id: `notification-assigned-${Date.now()}-${userId}-${Math.random()}`,
               userId,
-              title: 'Work Step Reassigned',
-              message: `You have been assigned to work step: "${workStep.title}"`,
+              title: 'New Task Assigned',
+              message: `You have been assigned to task: "${workStep.title}"`,
               type: 'INFO',
               read: false,
               createdAt: new Date(),
@@ -327,7 +366,64 @@ export function useWorkStep() {
         })
       }
 
-      // Notify workflow manager if priority changed
+      // Notify workflow manager and admins when task status changes to COMPLETED
+      if (request.status === TaskStatusEnum.COMPLETED && oldWorkStep && oldWorkStep.status !== TaskStatusEnum.COMPLETED) {
+        const workflow = workStepStore.getWorkflowForStep(id)
+        if (workflow) {
+          // Notify workflow manager
+          if (workflow.workflowManagerId && workflow.workflowManagerId !== 'system') {
+            notificationStore.addNotification({
+              id: `notification-completed-status-${Date.now()}-${workflow.workflowManagerId}`,
+              userId: workflow.workflowManagerId,
+              title: 'Task Completed',
+              message: `Task "${workStep.title}" has been marked as completed.`,
+              type: 'SUCCESS',
+              read: false,
+              createdAt: new Date(),
+              relatedEntityId: workflow.id,
+              relatedEntityType: 'WORKFLOW',
+              workflowId: workflow.id,
+              workStepId: id,
+            })
+          }
+
+          // Notify all admins
+          try {
+            const actorGuids = await api.actor.getAllActors()
+            const actors = await Promise.all(
+              actorGuids.map((guid: string) => api.actor.getActor(guid))
+            )
+            
+            // Find all admin users
+            const adminActors = actors.filter((actor) => actor.role?.isAdmin === true)
+            
+            // Send notification to each admin
+            adminActors.forEach((adminActor) => {
+              notificationStore.addNotification({
+                id: `notification-completed-admin-status-${Date.now()}-${adminActor.guid}-${Math.random()}`,
+                userId: adminActor.guid,
+                title: 'Task Completed',
+                message: `Task "${workStep.title}" has been marked as completed.`,
+                type: 'SUCCESS',
+                read: false,
+                createdAt: new Date(),
+                relatedEntityId: workflow.id,
+                relatedEntityType: 'WORKFLOW',
+                workflowId: workflow.id,
+                workStepId: id,
+              })
+            })
+            
+            if (adminActors.length > 0) {
+              console.log(`[useWorkStep] Notified ${adminActors.length} admin(s) about task completion (status change)`)
+            }
+          } catch (err) {
+            console.warn('[useWorkStep] Failed to notify admins about task completion (status change):', err)
+            // Don't throw - this is not critical
+          }
+        }
+      }
+
       if (request.manualPriority) {
         const workflow = workStepStore.getWorkflowForStep(id)
         if (workflow) {
@@ -356,30 +452,28 @@ export function useWorkStep() {
     }
   }
 
-  /**
-   * Get prioritized work steps (for actor's view)
-   */
   const prioritizedWorkSteps = computed(() => {
     return workStepStore.prioritizedWorkSteps
   })
 
   /**
-   * Get work steps assigned to current user
+   * Get work steps assigned to the current user
+   * Optimized for fast personal task list access (< 0.5s target)
+   * Uses efficient O(n) filter operation from store
+   * Automatically reactive - updates when store changes
    */
   const myWorkSteps = computed(() => {
     if (!userStore.currentUser) return []
+    // getAssignedWorkSteps is an efficient O(n) filter operation
+    // Returns already filtered and ready-to-display work steps
     return workStepStore.getAssignedWorkSteps(userStore.currentUser.id)
   })
 
-  /**
-   * Delete a work step
-   */
   const deleteWorkStep = async (id: string): Promise<void> => {
     loading.value = true
     error.value = null
     try {
       await api.workStep.deleteWorkStep(id)
-      // Remove from store - Vue reactivity will update UI automatically
       workStepStore.removeWorkStep(id)
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Failed to delete work step')
@@ -390,21 +484,16 @@ export function useWorkStep() {
   }
 
   return {
-    // State
     workSteps: computed(() => workStepStore.workSteps),
     currentWorkStep: computed(() => workStepStore.currentWorkStep),
     loading: computed(() => loading.value),
     error: computed(() => error.value),
-
-    // Actions
     loadWorkSteps,
     loadMyWorkSteps,
     createWorkStep,
     completeWorkStep,
     updateWorkStep,
     deleteWorkStep,
-
-    // Computed
     prioritizedWorkSteps,
     myWorkSteps,
   }

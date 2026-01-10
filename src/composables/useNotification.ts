@@ -1,9 +1,3 @@
-/**
- * useNotification Composable
- * ViewModel layer - Presentation logic for notifications
- * Exposes reactive state and commands for Views
- */
-
 import { computed } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 import { useUser } from './useUser'
@@ -13,9 +7,6 @@ export function useNotification() {
   const notificationStore = useNotificationStore()
   const { currentUser } = useUser()
 
-  /**
-   * Expose reactive state to Views
-   */
   const allNotifications = computed(() => notificationStore.notifications)
   const unreadNotifications = computed(() => {
     if (!currentUser.value) return []

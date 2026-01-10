@@ -1,9 +1,3 @@
-/**
- * useObjective Composable
- * ViewModel layer - Business logic for objective/task management
- * Handles objective operations, filtering, and prioritization
- */
-
 import { ref, computed, type Ref } from 'vue'
 import { useObjectiveStore } from '@/stores/objective'
 import { useApi } from './useApi'
@@ -18,20 +12,14 @@ export function useObjective() {
   const loading = ref(false)
   const error = ref<Error | null>(null)
 
-  /**
-   * Load all objectives from API
-   */
   const loadObjectives = async () => {
     loading.value = true
     error.value = null
     try {
-      // Backend returns GUIDs, need to fetch each objective
       const objectiveGuids = await api.objective.getAllObjectives()
       const objectives = await Promise.all(
         objectiveGuids.map((guid) => api.objective.getObjective(guid))
       )
-      // Map ObjectiveDto to Objective domain model
-      // Note: This is a simplified mapping - in production would need proper mapping
       objectiveStore.setObjectives(objectives.map((obj) => ({
         id: obj.guid,
         title: obj.displayName,
@@ -60,7 +48,6 @@ export function useObjective() {
     loading.value = true
     error.value = null
     try {
-      // Backend uses GetObjective for workflow objectives
       const objective = await api.objective.getObjective(workflowId)
       // Map to Objective domain model
       objectiveStore.setObjectives([{
@@ -91,7 +78,6 @@ export function useObjective() {
     loading.value = true
     error.value = null
     try {
-      // Map CreateObjectiveRequest to CreateObjectiveDtoRequest
       const objectiveGuid = await api.objective.createObjective({
         displayName: request.title,
         description: request.description,

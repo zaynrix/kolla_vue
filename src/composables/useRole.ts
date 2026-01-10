@@ -1,8 +1,3 @@
-/**
- * useRole Composable
- * ViewModel layer - Business logic for role management
- */
-
 import { ref, computed } from 'vue'
 import { useApi } from './useApi'
 import type { RoleDto, CreateRoleRequest } from '@/types/api'
@@ -13,9 +8,6 @@ export function useRole() {
   const error = ref<Error | null>(null)
   const roles = ref<RoleDto[]>([])
 
-  /**
-   * Load all roles from API
-   */
   const loadRoles = async (): Promise<void> => {
     loading.value = true
     error.value = null

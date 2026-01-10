@@ -1,8 +1,3 @@
-/**
- * API Client - HTTP client for backend communication
- * Supports dependency injection for testability
- */
-
 import type { ApiConfig, ApiError } from './types'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
 

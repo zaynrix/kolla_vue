@@ -1,19 +1,11 @@
-/**
- * Workflow Store - Model Layer
- * Centralized reactive state management for workflows
- * No UI dependencies for high testability
- */
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Workflow } from '@/types/domain'
 
 export const useWorkflowStore = defineStore('workflow', () => {
-  // State
   const workflows = ref<Workflow[]>([])
   const currentWorkflowId = ref<string | null>(null)
 
-  // Getters
   const currentWorkflow = computed(() => {
     if (!currentWorkflowId.value) return null
     return workflows.value.find((w) => w.id === currentWorkflowId.value) || null
@@ -21,7 +13,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
   const workflowCount = computed(() => workflows.value.length)
 
-  // Actions
   function setWorkflows(newWorkflows: Workflow[]) {
     workflows.value = newWorkflows
   }
@@ -65,15 +56,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   return {
-    // State
     workflows,
     currentWorkflowId,
 
-    // Getters
     currentWorkflow,
     workflowCount,
 
-    // Actions
     setWorkflows,
     setWorkflow,
     addWorkflow,

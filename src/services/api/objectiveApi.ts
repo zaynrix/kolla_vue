@@ -1,9 +1,3 @@
-/**
- * Objective API Service
- * Handles all objective-related API calls
- * Note: Backend uses "Objective" terminology, frontend maps to Workflow/WorkStep
- */
-
 import type { ApiClient } from './client'
 import type {
   ObjectiveDto,

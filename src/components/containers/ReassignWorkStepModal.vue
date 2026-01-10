@@ -131,20 +131,32 @@ async function handleReassign() {
   error.value = null
   
   try {
-    // Backend API only supports single assignee, so use first selected
-    // If multiple are selected, we'll use the first one
-    const assigneeGuid = selectedActorIds.value[0]
+    // Support multiple assignees if selected, otherwise use single assignee
+    const assigneeValue = selectedActorIds.value.length === 1
+      ? selectedActorIds.value[0]
+      : selectedActorIds.value // Array if multiple
     
-    console.log('[ReassignModal] Reassigning work step:', props.workStep.id, 'to:', assigneeGuid)
+    console.log('[ReassignModal] Reassigning work step:', props.workStep.id, 'to:', assigneeValue)
     
     await updateWorkStep(props.workStep.id, {
-      assignedTo: assigneeGuid,
+      assignedTo: assigneeValue,
     })
     
     console.log('[ReassignModal] Reassign successful')
     
-    emit('reassigned', props.workStep.id)
+    // Show success feedback
+    const assigneeNames = selectedActorIds.value
+      .map(id => availableActors.value.find(a => a.guid === id)?.displayName || id)
+      .join(', ')
+    
+    // Close modal first
     handleClose()
+    
+    // Emit event to parent to reload data
+    emit('reassigned', props.workStep.id)
+    
+    // Show success message
+    alert(`Work step successfully reassigned to: ${assigneeNames}`)
   } catch (err) {
     console.error('[ReassignModal] Reassign error:', err)
     error.value = err instanceof Error ? err.message : 'Failed to reassign work step'

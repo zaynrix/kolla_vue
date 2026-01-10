@@ -1,18 +1,51 @@
-/**
- * Notification Store - Model Layer
- * Centralized reactive state management for notifications
- * Supports real-time updates via WebSocket or polling
- */
-
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Notification } from '@/types/domain'
 
-export const useNotificationStore = defineStore('notification', () => {
-  // State
-  const notifications = ref<Notification[]>([])
+const STORAGE_KEY = 'notifications'
 
-  // Getters
+// Helper functions for localStorage persistence
+function saveNotifications(notifications: Notification[]) {
+  try {
+    const serialized = JSON.stringify(notifications.map(n => ({
+      ...n,
+      createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt,
+    })))
+    localStorage.setItem(STORAGE_KEY, serialized)
+  } catch (err) {
+    console.error('[NotificationStore] Failed to save notifications:', err)
+  }
+}
+
+function loadNotifications(): Notification[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return parsed.map((n: any) => ({
+        ...n,
+        createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
+      }))
+    }
+  } catch (err) {
+    console.error('[NotificationStore] Failed to load notifications:', err)
+  }
+  return []
+}
+
+export const useNotificationStore = defineStore('notification', () => {
+  // Initialize from localStorage
+  const notifications = ref<Notification[]>(loadNotifications())
+
+  // Watch for changes and persist to localStorage
+  watch(
+    notifications,
+    (newNotifications) => {
+      saveNotifications(newNotifications)
+    },
+    { deep: true }
+  )
+
   const unreadCount = computed(() => {
     return notifications.value.filter((n) => !n.read).length
   })
@@ -34,19 +67,21 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   })
 
-  // Actions
   function setNotifications(newNotifications: Notification[]) {
     notifications.value = newNotifications
+    saveNotifications(newNotifications)
   }
 
   function addNotification(notification: Notification) {
     notifications.value.unshift(notification) // Add to beginning
+    saveNotifications(notifications.value)
   }
 
   function removeNotification(id: string) {
     const index = notifications.value.findIndex((n) => n.id === id)
     if (index >= 0) {
       notifications.value.splice(index, 1)
+      saveNotifications(notifications.value)
     }
   }
 
@@ -54,6 +89,7 @@ export const useNotificationStore = defineStore('notification', () => {
     const notification = notifications.value.find((n) => n.id === id)
     if (notification) {
       notification.read = true
+      saveNotifications(notifications.value)
     }
   }
 
@@ -61,10 +97,12 @@ export const useNotificationStore = defineStore('notification', () => {
     notifications.value.forEach((n) => {
       n.read = true
     })
+    saveNotifications(notifications.value)
   }
 
   function clearAll() {
     notifications.value = []
+    saveNotifications([])
   }
 
   function getNotificationById(id: string): Notification | undefined {
@@ -72,16 +110,13 @@ export const useNotificationStore = defineStore('notification', () => {
   }
 
   return {
-    // State
     notifications,
 
-    // Getters
     unreadCount,
     unreadNotifications,
     readNotifications,
     notificationsByType,
 
-    // Actions
     setNotifications,
     addNotification,
     removeNotification,

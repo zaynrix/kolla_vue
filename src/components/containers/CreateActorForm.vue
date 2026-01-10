@@ -19,13 +19,14 @@
       </div>
 
       <div class="form-group">
-        <label for="actor-role" class="form-label">Role (Optional)</label>
+        <label for="actor-role" class="form-label">Role *</label>
         <select
           id="actor-role"
           v-model="formData.RoleGuid"
           class="form-select"
+          required
         >
-          <option value="">No role assigned</option>
+          <option value="">Select a role</option>
           <option v-for="role in roles" :key="role.guid" :value="role.guid">
             {{ role.displayName }}
           </option>
@@ -83,14 +84,20 @@ onMounted(async () => {
         return
       }
 
+      // Validate role is selected
+      if (!formData.value.RoleGuid || formData.value.RoleGuid === '') {
+        error.value = 'Role is required'
+        return
+      }
+
       console.log('Creating actor with data:', {
         DisplayName: formData.value.DisplayName.trim(),
-        RoleGuid: formData.value.RoleGuid && formData.value.RoleGuid !== '' ? formData.value.RoleGuid : undefined,
+        RoleGuid: formData.value.RoleGuid,
       })
 
       const actorGuid = await createActor({
         DisplayName: formData.value.DisplayName.trim(),
-        RoleGuid: formData.value.RoleGuid && formData.value.RoleGuid !== '' ? formData.value.RoleGuid : undefined,
+        RoleGuid: formData.value.RoleGuid,
       })
       
       console.log('Actor created successfully with GUID:', actorGuid)
@@ -98,7 +105,7 @@ onMounted(async () => {
       // Reset form
       formData.value = {
         DisplayName: '',
-        RoleGuid: undefined,
+        RoleGuid: '',
       }
       emit('created')
     } catch (err: any) {

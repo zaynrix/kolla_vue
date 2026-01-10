@@ -1,20 +1,12 @@
-/**
- * Objective Store - Model Layer
- * Centralized reactive state management for objectives/tasks
- * Contains domain models and priority calculation logic
- */
-
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Objective } from '@/types/domain'
 import { Priority } from '@/types/domain'
 
 export const useObjectiveStore = defineStore('objective', () => {
-  // State
   const objectives = ref<Objective[]>([])
   const currentObjectiveId = ref<string | null>(null)
 
-  // Getters
   const currentObjective = computed(() => {
     if (!currentObjectiveId.value) return null
     return (
@@ -25,10 +17,6 @@ export const useObjectiveStore = defineStore('objective', () => {
 
   const objectiveCount = computed(() => objectives.value.length)
 
-  /**
-   * Get objectives prioritized by urgency
-   * Immediate: ≤8h, Medium-term: ≤32h, Long-term: >32h
-   */
   const prioritizedObjectives = computed(() => {
     const now = new Date()
     return [...objectives.value].sort((a, b) => {
@@ -39,7 +27,6 @@ export const useObjectiveStore = defineStore('objective', () => {
       const bHoursUntilDeadline =
         (bDeadline.getTime() - now.getTime()) / (1000 * 60 * 60)
 
-      // Calculate priority
       const getPriorityValue = (hours: number): number => {
         if (hours <= 8) return 0 // IMMEDIATE
         if (hours <= 32) return 1 // MEDIUM_TERM
@@ -53,14 +40,10 @@ export const useObjectiveStore = defineStore('objective', () => {
         return aPriority - bPriority
       }
 
-      // If same priority, sort by deadline
       return aDeadline.getTime() - bDeadline.getTime()
     })
   })
 
-  /**
-   * Get objectives by priority
-   */
   const objectivesByPriority = computed(() => {
     return {
       [Priority.SHORT_TERM]: objectives.value.filter(
@@ -75,7 +58,6 @@ export const useObjectiveStore = defineStore('objective', () => {
     }
   })
 
-  // Actions
   function setObjectives(newObjectives: Objective[]) {
     objectives.value = newObjectives
   }
@@ -123,17 +105,14 @@ export const useObjectiveStore = defineStore('objective', () => {
   }
 
   return {
-    // State
     objectives,
     currentObjectiveId,
 
-    // Getters
     currentObjective,
     objectiveCount,
     prioritizedObjectives,
     objectivesByPriority,
 
-    // Actions
     setObjectives,
     setObjective,
     addObjective,

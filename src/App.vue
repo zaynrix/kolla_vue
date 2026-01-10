@@ -71,15 +71,28 @@ watch(() => route.path, () => {
   <div id="app">
     <header v-if="isAuthenticated && !isLoginPage" class="app-header">
       <div class="header-container">
-        <!-- Logo and Title -->
-        <div class="header-brand">
+        <!-- Left Section: Logo + Mobile Menu Toggle -->
+        <div class="header-left">
+          <button 
+            @click="toggleMobileMenu" 
+            class="mobile-menu-toggle"
+            :aria-expanded="showMobileMenu"
+            aria-label="Toggle menu"
+          >
+            <span class="hamburger-icon" :class="{ 'active': showMobileMenu }">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+          
           <RouterLink to="/" class="brand-link" @click="closeMobileMenu">
             <img :src="logo" alt="TH Brandenburg Logo" class="brand-logo" />
-            <h1 class="app-title">Kolla - System Management</h1>
+            <h1 class="app-title">Kolla</h1>
           </RouterLink>
         </div>
 
-        <!-- Desktop Navigation -->
+        <!-- Center Section: Desktop Navigation -->
         <nav class="main-nav desktop-nav">
           <RouterLink to="/" class="nav-link" @click="closeMobileMenu">
             <span class="nav-text">Home</span>
@@ -87,7 +100,7 @@ watch(() => route.path, () => {
           <RouterLink to="/my-work-steps" class="nav-link" @click="closeMobileMenu">
             <span class="nav-text">My Work Steps</span>
           </RouterLink>
-          <RouterLink v-if="isAdmin" to="/workflow-manager" class="nav-link" @click="closeMobileMenu">
+          <RouterLink v-if="isAdmin || userStore.isWorkflowManager" to="/workflow-manager" class="nav-link" @click="closeMobileMenu">
             <span class="nav-text">Workflow Manager</span>
           </RouterLink>
           <RouterLink v-if="isAdmin" to="/roles" class="nav-link" @click="closeMobileMenu">
@@ -98,16 +111,17 @@ watch(() => route.path, () => {
           </RouterLink>
         </nav>
 
-        <!-- User Actions (Desktop) -->
-        <div class="header-actions desktop-actions">
+        <!-- Right Section: User Actions -->
+        <div class="header-right">
           <ThemeToggle />
           
           <div class="notification-container">
-            <button @click="showNotifications = !showNotifications" class="notification-button" aria-label="Notifications">
-              <svg class="notification-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <button @click="showNotifications = !showNotifications" class="icon-button notification-button" aria-label="Notifications" title="Notifications">
+              <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
               </svg>
               <NotificationBadge v-if="unreadCount > 0" :count="unreadCount" />
+              <span class="notification-label">Notifications</span>
             </button>
             <NotificationPanel v-if="showNotifications" class="notification-dropdown" />
           </div>
@@ -120,76 +134,102 @@ watch(() => route.path, () => {
               <span class="user-name">{{ currentUser?.username }}</span>
               <span v-if="isAdmin" class="user-badge">Admin</span>
             </div>
-            <button @click="handleLogout" class="btn-logout" aria-label="Logout">
+            <button @click="handleLogout" class="icon-button btn-logout" aria-label="Logout" title="Logout">
+              <svg class="icon logout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
               <span class="logout-text">Logout</span>
             </button>
           </div>
         </div>
-
-        <!-- Mobile Menu Toggle -->
-        <button 
-          @click="toggleMobileMenu" 
-          class="mobile-menu-toggle"
-          :aria-expanded="showMobileMenu"
-          aria-label="Toggle menu"
-        >
-          <span class="hamburger-icon" :class="{ 'active': showMobileMenu }">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </button>
       </div>
 
-      <!-- Mobile Navigation Menu -->
-      <transition name="slide-down">
-        <div v-if="showMobileMenu" class="mobile-menu">
-          <nav class="mobile-nav">
-            <RouterLink to="/" class="mobile-nav-link" @click="closeMobileMenu">
+      <!-- Mobile Navigation Drawer -->
+      <transition name="drawer">
+        <div v-if="showMobileMenu" class="drawer-overlay" @click="closeMobileMenu"></div>
+      </transition>
+      
+      <transition name="drawer-slide">
+        <aside v-if="showMobileMenu" class="drawer">
+          <div class="drawer-header">
+            <div class="drawer-brand">
+              <img :src="logo" alt="TH Brandenburg Logo" class="drawer-logo" />
+              <h2 class="drawer-title">Kolla</h2>
+            </div>
+            <button @click="closeMobileMenu" class="drawer-close" aria-label="Close menu">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <nav class="drawer-nav">
+            <RouterLink to="/" class="drawer-nav-link" @click="closeMobileMenu">
+              <svg class="drawer-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+              </svg>
               <span>Home</span>
             </RouterLink>
-            <RouterLink to="/my-work-steps" class="mobile-nav-link" @click="closeMobileMenu">
+            <RouterLink to="/my-work-steps" class="drawer-nav-link" @click="closeMobileMenu">
+              <svg class="drawer-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
               <span>My Work Steps</span>
             </RouterLink>
-            <RouterLink v-if="isAdmin" to="/workflow-manager" class="mobile-nav-link" @click="closeMobileMenu">
+            <RouterLink v-if="isAdmin || userStore.isWorkflowManager" to="/workflow-manager" class="drawer-nav-link" @click="closeMobileMenu">
+              <svg class="drawer-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
               <span>Workflow Manager</span>
             </RouterLink>
-            <RouterLink v-if="isAdmin" to="/roles" class="mobile-nav-link" @click="closeMobileMenu">
+            <RouterLink v-if="isAdmin" to="/roles" class="drawer-nav-link" @click="closeMobileMenu">
+              <svg class="drawer-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
               <span>Roles</span>
             </RouterLink>
-            <RouterLink v-if="isAdmin" to="/users" class="mobile-nav-link" @click="closeMobileMenu">
+            <RouterLink v-if="isAdmin" to="/users" class="drawer-nav-link" @click="closeMobileMenu">
+              <svg class="drawer-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
               <span>Users</span>
             </RouterLink>
           </nav>
           
-          <div class="mobile-user-section">
-            <div class="mobile-theme-controls">
-              <ThemeToggle />
-            </div>
-            
-            <div class="mobile-user-info">
-              <div class="user-avatar mobile">
+          <div class="drawer-footer">
+            <div class="drawer-user-info">
+              <div class="user-avatar drawer-avatar">
                 <span class="avatar-text">{{ currentUser?.username?.charAt(0).toUpperCase() || 'U' }}</span>
               </div>
-              <div class="mobile-user-details">
+              <div class="drawer-user-details">
                 <span class="user-name">{{ currentUser?.username }}</span>
                 <span v-if="isAdmin" class="user-badge">Admin</span>
               </div>
             </div>
             
-            <div class="mobile-actions">
-              <button @click="showNotifications = !showNotifications" class="mobile-notification-button">
+            <div class="drawer-actions">
+              <div class="drawer-theme-controls">
+                <ThemeToggle />
+              </div>
+              
+              <button @click="showNotifications = !showNotifications" class="drawer-action-button">
+                <svg class="drawer-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
                 <span>Notifications</span>
                 <NotificationBadge v-if="unreadCount > 0" :count="unreadCount" />
               </button>
-              <NotificationPanel v-if="showNotifications" class="mobile-notification-dropdown" />
+              <NotificationPanel v-if="showNotifications" class="drawer-notification-dropdown" />
               
-              <button @click="handleLogout" class="mobile-logout-button">
+              <button @click="handleLogout" class="drawer-action-button drawer-action-button--logout">
+                <svg class="drawer-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
                 <span>Logout</span>
               </button>
             </div>
           </div>
-        </div>
+        </aside>
       </transition>
     </header>
 
@@ -230,12 +270,55 @@ watch(() => route.path, () => {
 .header-container {
   max-width: 1800px;
   margin: 0 auto;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  position: relative;
+  min-height: 64px;
+}
+
+/* Mobile: Stack layout */
+@media (max-width: 767px) {
+  .header-container {
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-sm);
+    min-height: 56px;
+    grid-template-columns: auto 1fr auto;
+  }
+}
+
+/* Tablet: More spacing */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header-container {
+    padding: var(--spacing-md) var(--spacing-lg);
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Desktop: Full spacing */
+@media (min-width: 1024px) {
+  .header-container {
+    padding: var(--spacing-md) var(--spacing-xl);
+    gap: var(--spacing-xl);
+  }
+}
+
+/* Header Sections */
+.header-left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-lg);
-  position: relative;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 /* Brand/Logo Section */
@@ -248,10 +331,19 @@ watch(() => route.path, () => {
 .brand-link {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   text-decoration: none;
   color: inherit;
   transition: transform var(--transition-base);
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .brand-link {
+    gap: var(--spacing-xs);
+    max-width: calc(100vw - 120px); /* Leave space for menu toggle and actions */
+  }
 }
 
 .brand-link:hover {
@@ -259,7 +351,7 @@ watch(() => route.path, () => {
 }
 
 .brand-logo {
-  height: 40px;
+  height: 32px;
   width: auto;
   flex-shrink: 0;
   display: block;
@@ -269,6 +361,12 @@ watch(() => route.path, () => {
 
 .brand-link:hover .brand-logo {
   transform: scale(1.05);
+}
+
+@media (min-width: 480px) {
+  .brand-logo {
+    height: 36px;
+  }
 }
 
 @media (min-width: 768px) {
@@ -285,7 +383,7 @@ watch(() => route.path, () => {
 
 .app-title {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--text-base);
   font-weight: var(--font-bold);
   letter-spacing: -0.02em;
   background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
@@ -293,15 +391,51 @@ watch(() => route.path, () => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+@media (min-width: 480px) {
+  .app-title {
+    font-size: var(--text-lg);
+    max-width: 250px;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-title {
+    font-size: var(--text-xl);
+    max-width: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-title {
+    font-size: var(--text-2xl);
+  }
 }
 
 /* Desktop Navigation */
 .desktop-nav {
   display: none;
-  flex: 1;
   justify-content: center;
+  align-items: center;
   gap: var(--spacing-xs);
-  margin: 0 var(--spacing-xl);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .desktop-nav {
+    display: flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-nav {
+    gap: var(--spacing-sm);
+  }
 }
 
 .nav-link {
@@ -317,10 +451,25 @@ watch(() => route.path, () => {
   position: relative;
   opacity: 0.9;
   white-space: nowrap;
+  min-width: fit-content;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--text-xs);
+  }
 }
 
 .nav-text {
   display: none;
+}
+
+/* Show nav text on tablet and desktop */
+@media (min-width: 768px) {
+  .nav-text {
+    display: inline;
+  }
 }
 
 .nav-link:hover {
@@ -348,12 +497,47 @@ watch(() => route.path, () => {
   border-radius: var(--radius-full);
 }
 
-/* Desktop User Actions */
-.desktop-actions {
-  display: none;
+/* Common Icon Button Style */
+.icon-button {
+  display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-width: 40px;
+  min-height: 40px;
+  position: relative;
+  touch-action: manipulation;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.icon-button .icon {
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .icon-button .icon {
+    width: 22px;
+    height: 22px;
+  }
 }
 
 .notification-container {
@@ -362,35 +546,31 @@ watch(() => route.path, () => {
 
 .notification-button {
   position: relative;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
 }
 
-.notification-icon {
-  width: 24px;
-  height: 24px;
-  display: block;
-  color: var(--color-text-inverse);
-  transition: transform var(--transition-base);
-}
-
-.notification-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
-}
-
-.notification-button:hover .notification-icon {
+.notification-button:hover .icon {
   transform: scale(1.1);
   animation: ring 0.5s ease-in-out;
+}
+
+.notification-label {
+  display: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-medium);
+  margin-left: var(--spacing-xs);
+}
+
+/* Show notification label only on desktop */
+@media (min-width: 1024px) {
+  .notification-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-width: auto;
+  }
+  
+  .notification-label {
+    display: inline;
+  }
 }
 
 @keyframes ring {
@@ -411,36 +591,83 @@ watch(() => route.path, () => {
   right: 0;
   z-index: 1001;
   min-width: 320px;
+  max-width: calc(100vw - var(--spacing-lg) * 2);
+}
+
+@media (max-width: 767px) {
+  .notification-dropdown {
+    min-width: 280px;
+    max-width: calc(100vw - var(--spacing-md) * 2);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .notification-dropdown {
+    min-width: 300px;
+  }
 }
 
 .user-menu {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
   background: rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(10px);
 }
 
+@media (min-width: 768px) {
+  .user-menu {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+}
+
 .user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: var(--font-bold);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--color-text-inverse);
   flex-shrink: 0;
 }
 
+@media (min-width: 768px) {
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: var(--text-sm);
+  }
+}
+
 .user-details {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 2px;
+}
+
+@media (min-width: 768px) {
+  .user-details {
+    display: flex;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .user-details {
+    display: none; /* Hide on tablet to save space */
+  }
+}
+
+@media (min-width: 1024px) {
+  .user-details {
+    display: flex;
+  }
 }
 
 .user-name {
@@ -463,29 +690,26 @@ watch(() => route.path, () => {
 }
 
 .btn-logout {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-  color: var(--color-text-inverse);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  margin-left: var(--spacing-xs);
+  margin-left: 0;
 }
 
 .logout-text {
   display: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  margin-left: var(--spacing-xs);
 }
 
-.btn-logout:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-1px);
+/* Show logout text only on desktop */
+@media (min-width: 1024px) {
+  .btn-logout {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-width: auto;
+  }
+  
+  .logout-text {
+    display: inline;
+  }
 }
 
 /* Mobile Menu Toggle */
@@ -501,7 +725,25 @@ watch(() => route.path, () => {
   transition: all var(--transition-base);
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+@media (min-width: 768px) {
+  .mobile-menu-toggle {
+    display: none;
+  }
+}
+
+@media (min-width: 480px) {
+  .mobile-menu-toggle {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .mobile-menu-toggle:hover {
@@ -538,90 +780,176 @@ watch(() => route.path, () => {
   transform: rotate(-45deg) translate(6px, -6px);
 }
 
-/* Mobile Menu */
-.mobile-menu {
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: var(--spacing-lg);
-  animation: slideDown 0.3s ease;
+/* Drawer Overlay */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 999;
 }
 
-.mobile-nav {
+/* Drawer Sidebar */
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  max-width: 85vw;
+  background: var(--header-gradient);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+  color: var(--color-text-inverse);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.drawer-logo {
+  height: 32px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.drawer-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.drawer-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.drawer-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.drawer-nav {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  flex: 1;
+  overflow-y: auto;
 }
 
-.mobile-nav-link {
+.drawer-nav-link {
   display: flex;
   align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
   color: var(--color-text-inverse);
   text-decoration: none;
-  padding: var(--spacing-md);
   border-radius: var(--radius-md);
   transition: all var(--transition-base);
   font-weight: var(--font-medium);
+  font-size: var(--text-base);
   background: rgba(255, 255, 255, 0.05);
 }
 
-.mobile-nav-link:hover,
-.mobile-nav-link.router-link-exact-active {
+.drawer-nav-link:hover {
   background: rgba(255, 255, 255, 0.15);
   transform: translateX(4px);
 }
 
-.mobile-nav-link.router-link-exact-active {
+.drawer-nav-link.router-link-exact-active {
+  background: rgba(255, 255, 255, 0.2);
   font-weight: var(--font-semibold);
   border-left: 3px solid var(--color-text-inverse);
 }
 
-.mobile-theme-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+.drawer-nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
-.mobile-user-section {
+.drawer-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  flex-shrink: 0;
 }
 
-.mobile-user-info {
+.drawer-user-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md);
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
 }
 
-.user-avatar.mobile {
+.drawer-avatar {
   width: 48px;
   height: 48px;
   font-size: var(--text-lg);
 }
 
-.mobile-user-details {
+.drawer-user-details {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
 }
 
-.mobile-actions {
+.drawer-actions {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.mobile-notification-button,
-.mobile-logout-button {
+.drawer-theme-controls {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.drawer-action-button {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
@@ -638,30 +966,31 @@ watch(() => route.path, () => {
   position: relative;
 }
 
-.mobile-notification-button {
-  justify-content: space-between;
-}
-
-.mobile-logout-button {
-  justify-content: flex-start;
+.drawer-action-button--logout {
   background: rgba(220, 38, 38, 0.2);
   border-color: rgba(220, 38, 38, 0.3);
 }
 
-.mobile-notification-button:hover,
-.mobile-logout-button:hover {
+.drawer-action-button:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateX(4px);
 }
 
-.mobile-logout-button:hover {
+.drawer-action-button--logout:hover {
   background: rgba(220, 38, 38, 0.3);
 }
 
-.mobile-notification-dropdown {
+.drawer-action-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.drawer-notification-dropdown {
   position: relative;
   margin-top: var(--spacing-sm);
   z-index: 1001;
+  width: 100%;
 }
 
 /* Animations */
@@ -677,71 +1006,61 @@ watch(() => route.path, () => {
   }
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Drawer Animations */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
+.drawer-enter-from,
+.drawer-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
 }
 
-/* Tablet Styles (768px - 1024px) */
-@media (min-width: 768px) {
-  .header-container {
-    padding: var(--spacing-md) var(--spacing-xl);
-  }
+.drawer-slide-enter-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
+.drawer-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-slide-enter-from {
+  transform: translateX(-100%);
+}
+
+.drawer-slide-leave-to {
+  transform: translateX(-100%);
+}
+
+/* Tablet Styles (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
   .app-title {
-    font-size: var(--text-2xl);
+    font-size: var(--text-xl);
   }
 
-  .desktop-nav {
-    display: flex;
-  }
-
-  .desktop-actions {
-    display: flex;
-  }
-
-  .mobile-menu-toggle {
-    display: none;
-  }
-
-  .nav-text {
-    display: inline;
-  }
-
-  .logout-text {
-    display: inline;
-  }
-
-  .user-details {
-    display: flex;
+  .nav-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--text-xs);
   }
 }
 
 /* Desktop Styles (1024px+) */
 @media (min-width: 1024px) {
+  .nav-link {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--text-sm);
+  }
+}
+
+/* Large Desktop (1440px+) */
+@media (min-width: 1440px) {
   .header-container {
     padding: var(--spacing-lg) var(--spacing-2xl);
   }
 
   .desktop-nav {
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
   }
 
   .nav-link {
@@ -750,8 +1069,8 @@ watch(() => route.path, () => {
   }
 }
 
-/* Large Desktop (1440px+) */
-@media (min-width: 1440px) {
+/* Extra Large Desktop (1920px+) */
+@media (min-width: 1920px) {
   .header-container {
     padding: var(--spacing-lg) var(--spacing-3xl);
   }
@@ -761,12 +1080,36 @@ watch(() => route.path, () => {
 .app-main {
   flex: 1;
   background: var(--color-background);
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 60px);
 }
 
 @media (min-width: 768px) {
   .app-main {
+    min-height: calc(100vh - 70px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-main {
     min-height: calc(100vh - 80px);
+  }
+}
+
+/* Drawer responsive adjustments */
+@media (min-width: 768px) {
+  .drawer-overlay,
+  .drawer {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .drawer-nav-link {
+    min-height: 48px; /* Touch-friendly target */
+  }
+
+  .drawer-action-button {
+    min-height: 48px; /* Touch-friendly target */
   }
 }
 </style>

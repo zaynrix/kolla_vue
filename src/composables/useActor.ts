@@ -1,8 +1,3 @@
-/**
- * useActor Composable
- * ViewModel layer - Business logic for actor management
- */
-
 import { ref, computed } from 'vue'
 import { useApi } from './useApi'
 import { mapActorToUser } from '@/services/api/mappers'
@@ -15,9 +10,6 @@ export function useActor() {
   const error = ref<Error | null>(null)
   const actors = ref<ActorDto[]>([])
 
-  /**
-   * Load all actors from API
-   */
   const loadActors = async (): Promise<void> => {
     loading.value = true
     error.value = null

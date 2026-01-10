@@ -10,22 +10,37 @@
     <div id="app"></div>
     <script>
       // GitHub Pages 404 handler for SPA
-      // Redirect to index.html with the current path
-      // Vue Router will handle the routing client-side
+      // This file is served when a route doesn't exist on the server
+      // We need to redirect to index.html and let Vue Router handle the routing
+      
       const path = window.location.pathname;
       const base = '/kolla_vue/';
+      const search = window.location.search;
+      const hash = window.location.hash;
       
       // Extract the route after the base path
       let route = path.replace(base, '');
-      if (route && !route.startsWith('index.html')) {
-        // Remove trailing slash
-        route = route.replace(/\/$/, '');
-        // Redirect to index.html - Vue Router will handle the route
-        window.location.replace(base + 'index.html');
-      } else {
-        // Already at index.html or base, just reload
-        window.location.replace(base + 'index.html');
+      
+      // Remove 'index.html' if present
+      route = route.replace(/^index\.html/, '');
+      
+      // Remove leading/trailing slashes
+      route = route.replace(/^\/+|\/+$/g, '');
+      
+      // Build the redirect URL
+      let redirectUrl = base + 'index.html';
+      if (route) {
+        redirectUrl += '#' + route;
       }
+      if (search) {
+        redirectUrl += search;
+      }
+      if (hash && !route) {
+        redirectUrl += hash;
+      }
+      
+      // Redirect to index.html - Vue Router will handle the route
+      window.location.replace(redirectUrl);
     </script>
   </body>
 </html>

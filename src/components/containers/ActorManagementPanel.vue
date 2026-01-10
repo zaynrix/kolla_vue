@@ -156,7 +156,7 @@
                     </button>
                     <button
                       @click.stop="handleDelete(actor.guid)"
-                      class="btn btn--danger btn--small"
+                      class="btn btn--secondary btn--small btn--delete"
                       title="Delete User"
                     >
                       <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,14 +220,17 @@ import { useRouter } from 'vue-router'
 import { useActor } from '@/composables/useActor'
 import { useRole } from '@/composables/useRole'
 import { useWorkStep } from '@/composables/useWorkStep'
+import { useUserStore } from '@/stores/user'
 import CreateActorForm from './CreateActorForm.vue'
 import EditActorForm from './EditActorForm.vue'
 import type { ActorDto, RoleDto } from '@/types/api'
 
 const router = useRouter()
+const userStore = useUserStore()
 const { actors, loading, error, loadActors, deleteActor } = useActor()
 const { roles, loadRoles } = useRole()
 const { workSteps, loadWorkSteps } = useWorkStep()
+const isAdmin = computed(() => userStore.isAdmin)
 const showCreateForm = ref(false)
 const showEditForm = ref(false)
 const editingActor = ref<ActorDto | null>(null)
@@ -271,7 +274,7 @@ async function handleActorUpdated() {
   await Promise.all([loadActors(), loadWorkSteps()])
 }
 
-// Get task counts for a user
+
 function getUserTaskCount(userId: string): number {
   return workSteps.value.filter((ws) => {
     if (!ws.assignedTo) return false
@@ -316,16 +319,20 @@ function getUserCompletedCount(userId: string): number {
 }
 
 async function handleDelete(guid: string) {
-  if (!confirm('Are you sure you want to delete this actor? This action cannot be undone.')) {
+  if (!isAdmin.value) {
+    alert('Only administrators can delete users.')
+    return
+  }
+
+  if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
     return
   }
 
   try {
     await deleteActor(guid)
-    // Actors list will be automatically reloaded by deleteActor
   } catch (err) {
     console.error('Failed to delete actor:', err)
-    const errorMessage = err instanceof Error ? err.message : 'Failed to delete actor. Please try again.'
+    const errorMessage = err instanceof Error ? err.message : 'Failed to delete user. Please try again.'
     alert(errorMessage)
   }
 }
@@ -340,7 +347,6 @@ async function handleDelete(guid: string) {
   margin: 0 auto;
 }
 
-/* Header Section */
 .panel-header {
   margin-bottom: var(--spacing-2xl);
 }
@@ -420,7 +426,6 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
-/* Loading State */
 .loading-state {
   display: flex;
   align-items: center;
@@ -461,7 +466,6 @@ async function handleDelete(guid: string) {
   }
 }
 
-/* Error State */
 .error-state {
   display: flex;
   align-items: center;
@@ -498,7 +502,6 @@ async function handleDelete(guid: string) {
   margin: 0;
 }
 
-/* Content Section */
 .content-section {
   display: flex;
   flex-direction: column;
@@ -694,14 +697,22 @@ async function handleDelete(guid: string) {
 }
 
 .col-actions {
-  min-width: 180px;
+  min-width: 220px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .action-buttons {
   display: flex;
   gap: var(--spacing-xs);
   justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.action-buttons .btn {
+  display: inline-flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .btn {
@@ -745,6 +756,24 @@ async function handleDelete(guid: string) {
   border-color: var(--color-primary);
 }
 
+.btn--delete {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn--delete:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
+.btn--delete .btn-icon {
+  color: #dc2626;
+}
+
+.btn--delete span {
+  color: #dc2626;
+}
+
 .btn--danger {
   background: var(--color-danger);
   color: white;
@@ -761,7 +790,13 @@ async function handleDelete(guid: string) {
   font-size: var(--text-xs);
 }
 
-/* Empty State */
+.btn--disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .empty-state {
   display: flex;
   align-items: center;
@@ -826,7 +861,6 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .actor-management-panel {
     padding: var(--spacing-md);
