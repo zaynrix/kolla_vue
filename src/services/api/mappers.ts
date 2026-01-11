@@ -124,7 +124,7 @@ export function mapAssignmentToWorkStep(
     priority: mapPriorityFromBackend(assignment.priority),
     workflowId,
     sequenceNumber: finalSequenceNumber,
-    requiredRole: requiredRole || Role.TEAM_MEMBER, // Default if not provided
+    requiredRole: requiredRole || RoleEnum.TEAM_MEMBER, // Default if not provided
     assignedTo: assignment.assigneeGuid
       ? Array.isArray(assignment.assigneeGuid)
         ? assignment.assigneeGuid
