@@ -93,10 +93,10 @@
 
       <div v-if="calculatedDuration !== null" class="form-group">
         <div class="duration-display">
-          <label class="form-label">Time Remaining</label>
+          <label class="form-label">Duration</label>
           <div class="duration-value">
             <strong>{{ calculatedDuration }} hours</strong>
-            <small class="form-hint">Time left to finish the task (calculated from deadline date)</small>
+            <small class="form-hint">Time from start to deadline (calculated automatically)</small>
           </div>
         </div>
       </div>
@@ -215,24 +215,24 @@ const maxDeadlineDate = computed(() => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 })
 
-// Calculate duration as time remaining from now until deadline
+// Calculate duration as time from startDate to deadlineDate (for display)
 const calculatedDuration = computed(() => {
-  if (!formData.value.deadlineDate) {
+  if (!formData.value.startDate || !formData.value.deadlineDate) {
     return null
   }
   
+  const startDate = new Date(formData.value.startDate)
   const deadlineDate = new Date(formData.value.deadlineDate)
-  const now = new Date()
   
-  if (isNaN(deadlineDate.getTime())) {
+  if (isNaN(startDate.getTime()) || isNaN(deadlineDate.getTime())) {
     return null
   }
   
-  if (deadlineDate <= now) {
-    return 0 // Deadline has passed
+  if (deadlineDate <= startDate) {
+    return 0 // Invalid: deadline must be after start
   }
   
-  const diffMs = deadlineDate.getTime() - now.getTime()
+  const diffMs = deadlineDate.getTime() - startDate.getTime()
   const hours = Math.round(diffMs / (1000 * 60 * 60))
   
   return hours > 0 ? hours : 0

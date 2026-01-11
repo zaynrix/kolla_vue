@@ -7,11 +7,13 @@ import type {
 export interface CreateAssignmentParams {
   displayName: string
   description?: string | null
-  startDate?: string | null // ISO date string: "yyyy-MM-ddTHH:mm:ssZ"
-  deadlineDate?: string | null // ISO date string: "yyyy-MM-ddTHH:mm:ssZ"
+  duration: number // Duration in hours
   assigneeGuid?: string | null
-  requiredRoleGuid?: string | null
+  requiredRoleGuid?: string | null // Will be sent as "RequiredRole" in API
   parentObjectiveGuid?: string | null
+  // Legacy support: if startDate/deadlineDate are provided, duration will be calculated
+  startDate?: string | null // ISO date string: "yyyy-MM-ddTHH:mm:ssZ" - for calculating duration
+  deadlineDate?: string | null // ISO date string: "yyyy-MM-ddTHH:mm:ssZ" - for calculating duration
 }
 
 export class AssignmentApiService {
@@ -36,69 +38,53 @@ export class AssignmentApiService {
   /**
    * POST /Assignment/Create
    * Creates a new assignment
+   * New API: POST Create(string DisplayName, string? Description, int Duration, Guid? AssigneeGuid, Guid? RequiredRole, Guid? ParentObjectiveGuid): Guid
    * Validation:
-   * - AssigneeGuid must have matching RequiredRole if both provided
-   * - StartDate/DeadlineDate cannot be in past
-   * - DeadlineDate > StartDate
+   * - AssigneeGuid must have matching RequiredRole if both provided (backend validates)
    */
   async createAssignment(params: CreateAssignmentParams): Promise<string> {
-    // Validate dates
-    const now = new Date()
+    // Calculate duration from dates if provided, otherwise use provided duration
+    let duration = params.duration
     
-    if (params.startDate) {
+    if (params.startDate && params.deadlineDate) {
+      // Calculate duration in hours from startDate to deadlineDate
       const startDate = new Date(params.startDate)
-      if (startDate < now) {
-        throw new Error('StartDate cannot be in the past')
-      }
-    }
-    
-    if (params.deadlineDate) {
       const deadlineDate = new Date(params.deadlineDate)
-      if (deadlineDate < now) {
-        throw new Error('DeadlineDate cannot be in the past')
+      
+      if (isNaN(startDate.getTime()) || isNaN(deadlineDate.getTime())) {
+        throw new Error('Invalid date format for startDate or deadlineDate')
       }
       
-      if (params.startDate) {
-        const startDate = new Date(params.startDate)
-        if (deadlineDate <= startDate) {
-          throw new Error('DeadlineDate must be after StartDate')
-        }
+      if (deadlineDate <= startDate) {
+        throw new Error('DeadlineDate must be after StartDate')
       }
+      
+      // Calculate duration in hours
+      const diffMs = deadlineDate.getTime() - startDate.getTime()
+      const diffHours = Math.round(diffMs / (1000 * 60 * 60))
+      
+      if (diffHours <= 0) {
+        throw new Error('Duration must be at least 1 hour')
+      }
+      
+      duration = diffHours
+      console.log('[AssignmentApi] Calculated duration from dates:', duration, 'hours')
+    } else if (!duration || duration <= 0) {
+      throw new Error('Duration must be provided and greater than 0')
     }
 
     // Validate assignee/role matching if both provided
-    // Note: This validation should ideally check the actor's role matches requiredRoleGuid
-    // For now, we'll rely on backend validation, but we can add client-side check if needed
+    // Backend will validate that Assignee's role matches RequiredRole
     if (params.assigneeGuid && params.requiredRoleGuid) {
-      // Client-side validation would require fetching actor and role details
-      // For now, backend will handle this validation
-      console.log('[AssignmentApi] AssigneeGuid and RequiredRoleGuid both provided - backend will validate matching')
-    }
-
-    // Format dates to "yyyy-MM-ddTHH:mm:ssZ" format
-    const formatDate = (dateString: string | null | undefined): string | null => {
-      if (!dateString) return null
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return null
-      
-      // Format as "yyyy-MM-ddTHH:mm:ssZ"
-      const year = date.getUTCFullYear()
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-      const day = String(date.getUTCDate()).padStart(2, '0')
-      const hours = String(date.getUTCHours()).padStart(2, '0')
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0')
-      
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`
+      console.log('[AssignmentApi] AssigneeGuid and RequiredRole both provided - backend will validate matching')
     }
 
     const requestBody = {
       DisplayName: params.displayName,
       Description: params.description ?? null,
-      StartDate: formatDate(params.startDate),
-      DeadlineDate: formatDate(params.deadlineDate),
+      Duration: duration,
       AssigneeGuid: params.assigneeGuid ?? null,
-      RequiredRoleGuid: params.requiredRoleGuid ?? null, // Fixed: should be RequiredRoleGuid, not RequiredRole
+      RequiredRole: params.requiredRoleGuid ?? null, // API uses "RequiredRole" but it's still a GUID
       ParentObjectiveGuid: params.parentObjectiveGuid ?? null,
     }
 
@@ -131,6 +117,21 @@ export class AssignmentApiService {
     await this.apiClient.patch<void>(`/Assignment/SetDescription`, {
       Guid: guid,
       Description: description ?? null,
+    })
+  }
+
+  /**
+   * PATCH /Assignment/SetDuration
+   * Sets the duration of an assignment in hours
+   */
+  async setAssignmentDuration(guid: string, duration: number): Promise<void> {
+    if (duration <= 0) {
+      throw new Error('Duration must be greater than 0')
+    }
+    
+    await this.apiClient.patch<void>(`/Assignment/SetDuration`, {
+      Guid: guid,
+      Duration: duration,
     })
   }
 
@@ -205,6 +206,7 @@ export class AssignmentApiService {
   /**
    * PATCH /Assignment/SetPriority
    * Priority must be 0, 1, or 2 (0=ShortTerm, 1=MidTerm, 2=LongTerm)
+   * Request body: { "guid": "...", "priority": 1 }
    */
   async setAssignmentPriority(guid: string, priority: number): Promise<void> {
     if (priority !== 0 && priority !== 1 && priority !== 2) {
@@ -221,6 +223,7 @@ export class AssignmentApiService {
    * PATCH /Assignment/SetStatus
    * Status must be 0, 1, or 2 (0=Planned, 1=InProgress, 2=Completed)
    * Status=2 auto-calculates endDate
+   * Request body: { "guid": "...", "assignmentStatus": 0 }
    */
   async setAssignmentStatus(guid: string, assignmentStatus: number): Promise<void> {
     if (assignmentStatus !== 0 && assignmentStatus !== 1 && assignmentStatus !== 2) {

@@ -107,11 +107,13 @@ export interface ObjectiveDto {
   guid: string
   displayName: string
   description?: string
+  deadlineDate?: string | null // ISO date string (DateTime?)
 }
 
 export interface CreateObjectiveDtoRequest {
   displayName: string
   description?: string
+  deadlineDate?: string | null // ISO date string (DateTime?)
 }
 
 export interface UpdateObjectiveDisplayNameRequest {
@@ -122,15 +124,22 @@ export interface UpdateObjectiveDescriptionRequest {
   description?: string
 }
 
+export interface UpdateObjectiveDeadlineDateRequest {
+  guid: string
+  DeadlineDate?: string | null // ISO date string
+}
+
 // Assignment API Types (Backend uses "Assignment" for Work Steps)
 // Matches the data model: Assignment has relationships to Objective, Actor, and Role
 export interface AssignmentDto {
   guid: string
   displayName: string
   description?: string | null
-  startDate?: string | null // ISO date string (DateTime?)
+  duration: number // Duration in hours
+  sequenceNumber: number // Sequence number in workflow
+  startDate?: string | null // ISO date string (DateTime?) - may not be in response
   endDate?: string | null // ISO date string (DateTime?) - automatically set when status=Completed
-  deadlineDate?: string | null // ISO date string (DateTime?)
+  deadlineDate?: string | null // ISO date string (DateTime?) - may not be in response
   assigneeGuid?: string | null // GUID of Actor assigned to this assignment (1 Actor -> many Assignments)
   requiredRoleGuid?: string | null // GUID of Role required for this assignment (1 Assignment -> 1 Role)
   priority: number // 0=ShortTerm, 1=MidTerm, 2=LongTerm (enum Priority)
@@ -141,10 +150,9 @@ export interface AssignmentDto {
 export interface CreateAssignmentRequest {
   DisplayName: string
   Description?: string | null
-  StartDate?: string | null // ISO date string (format: "yyyy-MM-ddTHH:mm:ssZ")
-  DeadlineDate?: string | null // ISO date string (format: "yyyy-MM-ddTHH:mm:ssZ")
+  Duration: number // Duration in hours
   AssigneeGuid?: string | null
-  RequiredRoleGuid?: string | null // Role GUID (not RequiredRole)
+  RequiredRole?: string | null // Role GUID (named RequiredRole in API, but it's still a GUID)
   ParentObjectiveGuid?: string | null
 }
 
@@ -154,6 +162,11 @@ export interface UpdateAssignmentDisplayNameRequest {
 
 export interface UpdateAssignmentDescriptionRequest {
   description?: string
+}
+
+export interface UpdateAssignmentDurationRequest {
+  guid: string
+  Duration: number // Duration in hours
 }
 
 export interface UpdateAssignmentStartDateRequest {

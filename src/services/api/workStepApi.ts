@@ -138,13 +138,30 @@ export class WorkStepApiService {
 
   async createWorkStep(request: CreateWorkStepRequest): Promise<WorkStep> {
     // Map to Assignment API using the assignment service with validation
-    // Use requiredRoleGuid if provided, otherwise null
+    // New API uses Duration instead of StartDate/DeadlineDate
+    // Calculate duration from dates if provided, otherwise use provided duration
+    let duration = request.duration || 8 // Default to 8 hours if not provided
+    
+    if (request.startDate && request.deadlineDate) {
+      // Calculate duration in hours from startDate to deadlineDate
+      const startDate = new Date(request.startDate)
+      const deadlineDate = new Date(request.deadlineDate)
+      
+      if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
+        const diffMs = deadlineDate.getTime() - startDate.getTime()
+        duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+        if (duration <= 0) duration = 1 // Minimum 1 hour
+      }
+    }
+    
     const assignmentParams: CreateAssignmentParams = {
       displayName: request.title,
       description: request.description ?? null,
+      duration: duration,
       assigneeGuid: Array.isArray(request.assignedTo) ? request.assignedTo[0] : request.assignedTo ?? null,
       requiredRoleGuid: request.requiredRoleGuid ?? null, // Use GUID from form
       parentObjectiveGuid: request.workflowId ?? null,
+      // Legacy support: pass dates for duration calculation if needed
       startDate: request.startDate ?? null,
       deadlineDate: request.deadlineDate ?? null,
     }
@@ -231,9 +248,21 @@ export class WorkStepApiService {
       await this.assignmentService.setAssignmentDeadlineDate(id, request.deadlineDate)
     }
     
-    // Note: Duration is not directly updatable via the Assignment API
-    // It's a calculated field based on startDate and deadlineDate
-    // If duration needs to be updated, it would need to be calculated from dates
+    // Update duration if provided
+    if (request.duration !== undefined && request.duration > 0) {
+      await this.assignmentService.setAssignmentDuration(id, request.duration)
+    } else if (request.startDate && request.deadlineDate) {
+      // Calculate duration from dates if both are provided and duration not explicitly set
+      const startDate = new Date(request.startDate)
+      const deadlineDate = new Date(request.deadlineDate)
+      if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
+        const diffMs = deadlineDate.getTime() - startDate.getTime()
+        const duration = Math.round(diffMs / (1000 * 60 * 60))
+        if (duration > 0) {
+          await this.assignmentService.setAssignmentDuration(id, duration)
+        }
+      }
+    }
     
     // Fetch updated assignment
     const assignment = await this.apiClient.get<AssignmentDto>(

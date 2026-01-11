@@ -79,10 +79,10 @@
 
       <div v-if="calculatedDuration !== null" class="form-group">
         <div class="duration-display">
-          <label class="form-label">Time Remaining</label>
+          <label class="form-label">Duration</label>
           <div class="duration-value">
             <strong>{{ calculatedDuration }} hours</strong>
-            <small class="form-hint">Time left to finish the task (calculated from deadline date)</small>
+            <small class="form-hint">Time from start to deadline (calculated automatically)</small>
           </div>
         </div>
       </div>
@@ -143,6 +143,14 @@
         </button>
       </div>
     </form>
+
+    <!-- Success Dialog -->
+    <SuccessDialog
+      :show="showSuccessDialog"
+      title="Success"
+      message="Work step created successfully!"
+      @close="handleSuccessDialogClose"
+    />
   </div>
 </template>
 
@@ -152,6 +160,7 @@ import { useWorkStep } from '@/composables/useWorkStep'
 import { useActor } from '@/composables/useActor'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useWorkStepStore } from '@/stores/workStep'
+import SuccessDialog from '@/components/presenters/SuccessDialog.vue'
 import type { CreateWorkStepRequest } from '@/types/api'
 import { Role } from '@/types/domain'
 import type { ActorDto } from '@/types/api'
@@ -200,6 +209,8 @@ const formData = ref<CreateWorkStepRequest>({
 
 const selectedAssignees = ref<string[]>([])
 const error = ref<string | null>(null)
+const showSuccessDialog = ref(false)
+const createdWorkStepId = ref<string | null>(null)
 
 // Computed properties for date minimums
 const minStartDate = computed(() => {
@@ -235,24 +246,24 @@ const maxDeadlineDate = computed(() => {
   return `${year}-${month}-${day}T${hours}:${minutes}`
 })
 
-// Calculate duration as time remaining from now until deadline
+// Calculate duration as time from startDate to deadlineDate (for display)
 const calculatedDuration = computed(() => {
-  if (!formData.value.deadlineDate) {
+  if (!formData.value.startDate || !formData.value.deadlineDate) {
     return null
   }
   
+  const startDate = new Date(formData.value.startDate)
   const deadlineDate = new Date(formData.value.deadlineDate)
-  const now = new Date()
   
-  if (isNaN(deadlineDate.getTime())) {
+  if (isNaN(startDate.getTime()) || isNaN(deadlineDate.getTime())) {
     return null
   }
   
-  if (deadlineDate <= now) {
-    return 0 // Deadline has passed
+  if (deadlineDate <= startDate) {
+    return 0 // Invalid: deadline must be after start
   }
   
-  const diffMs = deadlineDate.getTime() - now.getTime()
+  const diffMs = deadlineDate.getTime() - startDate.getTime()
   const hours = Math.round(diffMs / (1000 * 60 * 60))
   
   return hours > 0 ? hours : 0
@@ -357,11 +368,10 @@ async function handleSubmit() {
       return new Date(dateString).toISOString()
     }
 
-    // Calculate duration as time remaining from now until deadline
-    // Reuse the 'now' variable already declared above for validation
-    const diffMs = deadlineDate.getTime() - now.getTime()
+    // Calculate duration as time from startDate to deadlineDate (not from now)
+    const diffMs = deadlineDate.getTime() - startDate.getTime()
     const calculatedDuration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
-    const duration = calculatedDuration > 0 ? calculatedDuration : 0 // Use 0 if deadline has passed, not 8
+    const duration = calculatedDuration > 0 ? calculatedDuration : 1 // Minimum 1 hour
 
     // Calculate sequence number based on existing work steps
     const nextSequenceNumber = calculateNextSequenceNumber()
@@ -403,10 +413,27 @@ async function handleSubmit() {
     }
     selectedAssignees.value = []
 
-    emit('created', workStep.id)
+    // Store the created work step ID
+    createdWorkStepId.value = workStep.id
+
+    // Show success dialog
+    showSuccessDialog.value = true
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to create work step'
   }
+}
+
+function handleSuccessDialogClose() {
+  showSuccessDialog.value = false
+  
+  // Emit created event with the work step ID
+  if (createdWorkStepId.value) {
+    emit('created', createdWorkStepId.value)
+    createdWorkStepId.value = null
+  }
+  
+  // Close the form after dialog is closed
+  emit('close')
 }
 </script>
 

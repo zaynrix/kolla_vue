@@ -420,6 +420,19 @@ watch(() => props.workSteps, (newSteps) => {
   position: relative;
   display: flex;
   justify-content: center;
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .workstep-board {
+    padding: var(--spacing-lg);
+  }
+}
+
+@media (max-width: 768px) {
+  .workstep-board {
+    padding: var(--spacing-md);
+  }
 }
 
 .workstep-board::-webkit-scrollbar {
@@ -442,12 +455,22 @@ watch(() => props.workSteps, (newSteps) => {
 
 .board-columns {
   display: flex;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-lg);
   min-width: min-content;
   padding: var(--spacing-md);
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .board-columns {
+    gap: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    justify-content: center;
+  }
 }
 
 @media (min-width: 1440px) {
@@ -458,8 +481,10 @@ watch(() => props.workSteps, (newSteps) => {
 }
 
 .board-column {
-  flex: 0 0 auto;
-  width: 340px;
+  flex: 1 1 0;
+  min-width: 280px;
+  max-width: 380px;
+  width: 100%;
   background: var(--color-surface);
   border-radius: var(--radius-xl);
   padding: var(--spacing-lg);
@@ -502,9 +527,44 @@ watch(() => props.workSteps, (newSteps) => {
   opacity: 1;
 }
 
+/* Medium screens (tablets) */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .board-column {
+    min-width: 260px;
+    max-width: 320px;
+    padding: var(--spacing-md);
+  }
+  
+  .board-columns {
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+  }
+}
+
+/* Large screens */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .board-column {
+    min-width: 300px;
+    max-width: 340px;
+  }
+  
+  .board-columns {
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Extra large screens */
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .board-column {
+    min-width: 320px;
+    max-width: 360px;
+  }
+}
+
 @media (min-width: 1440px) {
   .board-column {
-    width: 380px;
+    min-width: 340px;
+    max-width: 380px;
     max-height: calc(100vh - 180px);
     min-height: 700px;
   }
@@ -512,14 +572,17 @@ watch(() => props.workSteps, (newSteps) => {
 
 @media (min-width: 1920px) {
   .board-column {
-    width: 420px;
+    min-width: 380px;
+    max-width: 420px;
   }
 }
 
+/* Small screens (mobile) */
 @media (max-width: 768px) {
   .board-column {
-    width: 300px;
-    min-width: 280px;
+    min-width: 100%;
+    max-width: 100%;
+    width: 100%;
     max-height: calc(100vh - 200px);
     min-height: 500px;
   }
@@ -587,7 +650,22 @@ watch(() => props.workSteps, (newSteps) => {
   scrollbar-color: var(--color-border) transparent;
   margin-top: var(--spacing-sm);
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .column-content {
+    min-height: 450px;
+    gap: var(--spacing-sm);
+  }
+}
+
+@media (max-width: 768px) {
+  .column-content {
+    min-height: 400px;
+  }
 }
 
 .column-content::-webkit-scrollbar {
@@ -635,7 +713,7 @@ watch(() => props.workSteps, (newSteps) => {
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-border);
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   user-select: none;
   width: 100%;
   max-width: 100%;
@@ -649,6 +727,20 @@ watch(() => props.workSteps, (newSteps) => {
   height: auto;
   flex-shrink: 0;
   margin: 0;
+}
+
+@media (max-width: 1023px) {
+  .board-card {
+    padding: 1.25rem;
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 768px) {
+  .board-card {
+    padding: 1rem;
+    min-height: 240px;
+  }
 }
 
 .board-card:active {

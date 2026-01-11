@@ -153,6 +153,27 @@ export function useAssignment() {
   }
 
   /**
+   * Update assignment duration
+   * Duration is in hours
+   */
+  const updateDuration = async (guid: string, duration: number): Promise<void> => {
+    loading.value = true
+    error.value = null
+    try {
+      if (duration <= 0) {
+        throw new Error('Duration must be greater than 0')
+      }
+      await api.assignment.setAssignmentDuration(guid, duration)
+      await loadAllAssignments()
+    } catch (err) {
+      error.value = err instanceof Error ? err : new Error('Failed to update duration')
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Update assignment assignee
    */
   const updateAssignee = async (guid: string, assigneeGuid?: string | null): Promise<void> => {
@@ -277,6 +298,7 @@ export function useAssignment() {
     updateDescription,
     updateStartDate,
     updateDeadlineDate,
+    updateDuration,
     updateAssignee,
     updateRequiredRole,
     updatePriority,

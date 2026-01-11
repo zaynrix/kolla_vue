@@ -4,6 +4,7 @@ import type {
   CreateObjectiveDtoRequest,
   UpdateObjectiveDisplayNameRequest,
   UpdateObjectiveDescriptionRequest,
+  UpdateObjectiveDeadlineDateRequest,
   ApiResponse,
   PaginatedResponse,
 } from '@/types/api'
@@ -41,6 +42,13 @@ export class ObjectiveApiService {
     await this.apiClient.patch<void>(`/Objective/SetDescription`, {
       Guid: guid,
       Description: description ?? null,
+    })
+  }
+
+  async setObjectiveDeadlineDate(guid: string, deadlineDate?: string | null): Promise<void> {
+    await this.apiClient.patch<void>(`/Objective/SetDeadlineDate`, {
+      Guid: guid,
+      DeadlineDate: deadlineDate ?? null,
     })
   }
 

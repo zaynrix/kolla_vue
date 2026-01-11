@@ -96,25 +96,24 @@ export function mapStatusToBackend(status: TaskStatus): number {
 export function mapAssignmentToWorkStep(
   assignment: AssignmentDto,
   workflowId: string,
-  sequenceNumber: number,
-  requiredRole: Role
+  sequenceNumber?: number, // Optional: use from assignment if not provided
+  requiredRole?: Role // Optional: may need to be fetched separately
 ): WorkStep {
-  // Calculate duration as time remaining from now until deadline
-  // Duration represents the time left to finish the task
-  let duration = 0 // Default to 0 if no deadline
-  if (assignment.deadlineDate) {
-    const deadline = new Date(assignment.deadlineDate)
-    const now = new Date()
-    if (!isNaN(deadline.getTime())) {
-      if (deadline > now) {
-        const diffMs = deadline.getTime() - now.getTime()
-        duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
-        if (duration <= 0) duration = 0 // If deadline is very soon or passed, show 0
-      } else {
-        duration = 0 // Deadline has passed
-      }
+  // Use duration from assignment, or calculate from dates if duration not available
+  let duration = assignment.duration || 0
+  
+  // If duration is 0 but we have dates, calculate it
+  if (duration === 0 && assignment.startDate && assignment.deadlineDate) {
+    const startDate = new Date(assignment.startDate)
+    const deadlineDate = new Date(assignment.deadlineDate)
+    if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
+      const diffMs = deadlineDate.getTime() - startDate.getTime()
+      duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
     }
   }
+  
+  // Use sequenceNumber from assignment if available, otherwise use provided parameter
+  const finalSequenceNumber = assignment.sequenceNumber ?? sequenceNumber ?? 1
   
   return {
     id: assignment.guid,
@@ -124,8 +123,8 @@ export function mapAssignmentToWorkStep(
     status: mapStatusFromBackend(assignment.status),
     priority: mapPriorityFromBackend(assignment.priority),
     workflowId,
-    sequenceNumber,
-    requiredRole,
+    sequenceNumber: finalSequenceNumber,
+    requiredRole: requiredRole || Role.TEAM_MEMBER, // Default if not provided
     assignedTo: assignment.assigneeGuid
       ? Array.isArray(assignment.assigneeGuid)
         ? assignment.assigneeGuid

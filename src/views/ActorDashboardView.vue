@@ -416,11 +416,29 @@ the     <!-- Header Section -->
         />
       </div>
     </div>
+
+    <!-- Alert Dialog -->
+    <AlertDialog
+      :show="alertDialog.show"
+      :title="alertDialog.title"
+      :message="alertDialog.message"
+      :type="alertDialog.type"
+      @close="alertDialog.show = false"
+    />
+
+    <!-- Confirmation Dialog -->
+    <ConfirmationDialog
+      :show="confirmationDialog.show"
+      :title="confirmationDialog.title"
+      :message="confirmationDialog.message"
+      @confirm="handleConfirmationConfirm"
+      @cancel="confirmationDialog.show = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
 import { useWorkflow } from '@/composables/useWorkflow'
 import { useUser } from '@/composables/useUser'
@@ -430,6 +448,7 @@ import { useUserStore } from '@/stores/user'
 import { useWorkStepStore } from '@/stores/workStep'
 import { useApi } from '@/composables/useApi'
 import { useAuthorization } from '@/composables/useAuthorization'
+import { useNotification } from '@/composables/useNotification'
 import WorkStepCard from '@/components/presenters/WorkStepCard.vue'
 import WorkStepBoard from '@/components/presenters/WorkStepBoard.vue'
 import UserSelector from '@/components/presenters/UserSelector.vue'
@@ -439,6 +458,8 @@ import WorkStepDetailModal from '@/components/containers/WorkStepDetailModal.vue
 import ReassignWorkStepModal from '@/components/containers/ReassignWorkStepModal.vue'
 import EditWorkStepForm from '@/components/containers/EditWorkStepForm.vue'
 import CreateWorkStepForm from '@/components/containers/CreateWorkStepForm.vue'
+import AlertDialog from '@/components/presenters/AlertDialog.vue'
+import ConfirmationDialog from '@/components/presenters/ConfirmationDialog.vue'
 import type { WorkStep, Priority, TaskStatus } from '@/types/domain'
 import { Priority as PriorityEnum, TaskStatus as TaskStatusEnum } from '@/types/domain'
 
@@ -452,6 +473,7 @@ const { currentUser, availableUsers: viewModelUsers, setCurrentUser } = useUser(
 const { actors, loadActors } = useActor()
 const userStore = useUserStore()
 const { canAccessWorkStep } = useAuthorization()
+const { addNotification, allNotifications } = useNotification()
 
 // Modal states
 const showDetailModal = ref(false)
@@ -460,6 +482,11 @@ const showEditModal = ref(false)
 const showCreateModal = ref(false)
 const selectedWorkStep = ref<WorkStep | null>(null)
 const selectedWorkflowId = ref<string>('')
+
+// Dialog states
+const alertDialog = ref({ show: false, title: 'Alert', message: '', type: 'info' as 'error' | 'warning' | 'info' | 'success' })
+const confirmationDialog = ref({ show: false, title: 'Confirm', message: '', onConfirm: () => {} })
+const pendingCompleteWorkStepId = ref<string | null>(null)
 
 
 const isAdmin = computed(() => userStore.isAdmin)
@@ -516,6 +543,74 @@ const assignedUsersMap = computed(() => {
   return map
 })
 
+// Track previous task count to detect increases
+const previousTaskCount = ref(0)
+const previousTaskIds = ref<Set<string>>(new Set())
+
+// Watch for task count increases and create notifications
+watch(
+  displayedWorkSteps,
+  (newTasks, oldTasks) => {
+    // Only notify non-admin users about their own tasks
+    if (isAdmin.value || !currentUser.value) return
+    
+    const currentCount = newTasks.length
+    const currentTaskIds = new Set(newTasks.map(t => t.id))
+    
+    // Check if count increased
+    if (currentCount > previousTaskCount.value) {
+      // Find newly added tasks
+      const newTaskIds = newTasks
+        .filter(task => !previousTaskIds.value.has(task.id))
+        .map(task => task.id)
+      
+      // Create notifications for newly assigned tasks
+      newTaskIds.forEach(taskId => {
+        const newTask = newTasks.find(t => t.id === taskId)
+        if (newTask && newTask.assignedTo) {
+          // Check if user is assigned to this task
+          const isAssigned = Array.isArray(newTask.assignedTo)
+            ? newTask.assignedTo.includes(currentUser.value!.id)
+            : newTask.assignedTo === currentUser.value!.id
+          
+          if (isAssigned) {
+            // Check if notification already exists to avoid duplicates
+            const notificationId = `notification-task-assigned-${taskId}-${currentUser.value!.id}`
+            
+            // Check if notification with this ID already exists
+            const existingNotification = allNotifications.value.find(n => n.id === notificationId)
+            
+            if (!existingNotification) {
+              addNotification({
+                id: notificationId,
+                userId: currentUser.value!.id,
+                title: 'New Task Assigned',
+                message: `You have been assigned a new task: "${newTask.title}"`,
+                type: 'INFO',
+                read: false,
+                createdAt: new Date(),
+                relatedEntityId: taskId,
+                relatedEntityType: 'WORKSTEP',
+                workflowId: newTask.workflowId,
+                workStepId: taskId,
+              })
+              
+              console.log('[ActorDashboard] Notification created for new task:', newTask.title)
+            } else {
+              console.log('[ActorDashboard] Notification already exists for task:', newTask.title)
+            }
+          }
+        }
+      })
+    }
+    
+    // Update previous state
+    previousTaskCount.value = currentCount
+    previousTaskIds.value = currentTaskIds
+  },
+  { immediate: false }
+)
+
 onMounted(async () => {
   // Optimize loading: Load actors and workflows in parallel for faster initial render
   // Target: Personal task list accessible within 0.5 seconds
@@ -556,6 +651,10 @@ onMounted(async () => {
       await loadMyWorkSteps() // Load only current user's assignments
     }
   }
+  
+  // Initialize previous task count and IDs after loading
+  previousTaskCount.value = displayedWorkSteps.value.length
+  previousTaskIds.value = new Set(displayedWorkSteps.value.map(t => t.id))
   
   const loadEndTime = performance.now()
   const loadDuration = loadEndTime - loadStartTime
@@ -617,11 +716,26 @@ async function retryLoad() {
 
 
 
+function showAlert(title: string, message: string, type: 'error' | 'warning' | 'info' | 'success' = 'info') {
+  alertDialog.value = { show: true, title, message, type }
+}
+
+function showConfirmation(title: string, message: string, onConfirm: () => void) {
+  confirmationDialog.value = { show: true, title, message, onConfirm }
+}
+
+function handleConfirmationConfirm() {
+  if (confirmationDialog.value.onConfirm) {
+    confirmationDialog.value.onConfirm()
+  }
+  confirmationDialog.value.show = false
+}
+
 function handleWorkStepSelect(workStep: WorkStep) {
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
-      alert(`Access denied: ${authResult.reason || 'You do not have permission to access this work step.'}`)
+      showAlert('Access Denied', authResult.reason || 'You do not have permission to access this work step.', 'error')
       return
     }
   }
@@ -693,26 +807,31 @@ function getWorkflowDeadline(workflowId: string): Date | undefined {
 async function handleComplete(workStepId: string) {
   const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
   if (!workStep) {
-    alert('Work step not found')
+    showAlert('Error', 'Work step not found', 'error')
     return
   }
   
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
-      alert(`Access denied: ${authResult.reason || 'You do not have permission to complete this work step.'}`)
+      showAlert('Access Denied', authResult.reason || 'You do not have permission to complete this work step.', 'error')
       return
     }
   }
   
-  if (confirm('Mark this work step as completed?')) {
-    try {
-      await completeWorkStep(workStepId)
-    } catch (err) {
-      console.error('Failed to complete work step:', err)
-      alert('Failed to complete work step. Please try again.')
+  pendingCompleteWorkStepId.value = workStepId
+  showConfirmation('Complete Work Step', 'Mark this work step as completed?', async () => {
+    if (pendingCompleteWorkStepId.value) {
+      try {
+        await completeWorkStep(pendingCompleteWorkStepId.value)
+        pendingCompleteWorkStepId.value = null
+      } catch (err) {
+        console.error('Failed to complete work step:', err)
+        showAlert('Error', 'Failed to complete work step. Please try again.', 'error')
+        pendingCompleteWorkStepId.value = null
+      }
     }
-  }
+  })
 }
 
 function handleView(workStepId: string) {
@@ -722,14 +841,14 @@ function handleView(workStepId: string) {
 function handleViewDetails(workStepId: string) {
   const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
   if (!workStep) {
-    alert('Work step not found')
+    showAlert('Error', 'Work step not found', 'error')
     return
   }
   
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
-      alert(`Access denied: ${authResult.reason || 'You do not have permission to view this work step.'}`)
+      showAlert('Access Denied', authResult.reason || 'You do not have permission to view this work step.', 'error')
       return
     }
   }
@@ -761,7 +880,7 @@ function handleReassign(workStepId: string) {
     showReassignModal.value = true
   } else {
     console.error('Work step not found for reassign:', workStepId)
-    alert('Work step not found. Please refresh the page and try again.')
+    showAlert('Error', 'Work step not found. Please refresh the page and try again.', 'error')
   }
 }
 
@@ -780,7 +899,7 @@ async function handleReassigned(workStepId: string) {
     showReassignModal.value = false
   } catch (err) {
     console.error('Failed to reload after reassign:', err)
-    alert('Work step reassigned, but failed to refresh the list. Please reload the page.')
+    showAlert('Warning', 'Work step reassigned, but failed to refresh the list. Please reload the page.', 'warning')
   }
 }
 
@@ -809,8 +928,7 @@ async function handleCreated(workStepId: string) {
     // Close modal and show success feedback
     showCreateModal.value = false
     
-    // Show success message
-    alert('Work step created successfully!')
+    // Note: Success dialog is now shown in CreateWorkStepForm component
     
     // Select the workflow that contains the new work step
     if (workflows.value.length > 0 && workflows.value[0]) {
@@ -818,7 +936,7 @@ async function handleCreated(workStepId: string) {
     }
   } catch (err) {
     console.error('Failed to reload after creating work step:', err)
-    alert('Work step created, but failed to refresh the list. Please reload the page.')
+    showAlert('Warning', 'Work step created, but failed to refresh the list. Please reload the page.', 'warning')
   }
 }
 
@@ -826,29 +944,28 @@ async function handleDelete(workStepId: string) {
   const workStep = prioritizedWorkSteps.value.find(ws => ws.id === workStepId)
   if (!workStep) {
     console.error('Work step not found:', workStepId)
+    showAlert('Error', 'Work step not found', 'error')
     return
   }
 
-  if (!confirm(`Are you sure you want to delete "${workStep.title}"? This action cannot be undone.`)) {
-    return
-  }
-
-  try {
-    console.log('Deleting work step:', workStepId)
-    await deleteWorkStep(workStepId)
-    console.log('Work step deleted successfully')
-    
-    // Reload work steps to reflect changes
-    if (isAdmin.value) {
-      await loadWorkSteps()
-    } else {
-      await loadMyWorkSteps()
+  showConfirmation('Delete Work Step', `Are you sure you want to delete "${workStep.title}"? This action cannot be undone.`, async () => {
+    try {
+      console.log('Deleting work step:', workStepId)
+      await deleteWorkStep(workStepId)
+      console.log('Work step deleted successfully')
+      
+      // Reload work steps to reflect changes
+      if (isAdmin.value) {
+        await loadWorkSteps()
+      } else {
+        await loadMyWorkSteps()
+      }
+    } catch (err) {
+      console.error('Failed to delete work step:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete work step. Please try again.'
+      showAlert('Error', errorMessage, 'error')
     }
-  } catch (err) {
-    console.error('Failed to delete work step:', err)
-    const errorMessage = err instanceof Error ? err.message : 'Failed to delete work step. Please try again.'
-    alert(`Error: ${errorMessage}`)
-  }
+  })
 }
 
 function handleEditFromModal() {
@@ -882,7 +999,7 @@ async function handleStatusChange(workStepId: string, newStatus: TaskStatus) {
   if (!isAdmin.value) {
     const authResult = canAccessWorkStep(workStep)
     if (!authResult.allowed) {
-      alert(`Access denied: ${authResult.reason || 'You do not have permission to change the status of this work step.'}`)
+      showAlert('Access Denied', authResult.reason || 'You do not have permission to change the status of this work step.', 'error')
       return
     }
   }
@@ -905,7 +1022,7 @@ async function handleStatusChange(workStepId: string, newStatus: TaskStatus) {
       workStepStore.updateWorkStep(currentStep)
     }
     
-    alert('Failed to update status. Please try again.')
+    showAlert('Error', 'Failed to update status. Please try again.', 'error')
   }
 }
 
@@ -923,11 +1040,11 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
       await loadMyWorkSteps()
     }
     
-    alert('Work step successfully assigned to workflow!')
+    showAlert('Success', 'Work step successfully assigned to workflow!', 'success')
   } catch (err) {
     console.error('Failed to assign workflow:', err)
     const errorMessage = err instanceof Error ? err.message : 'Failed to assign workflow. Please try again.'
-    alert(`Error: ${errorMessage}`)
+    showAlert('Error', errorMessage, 'error')
   }
 }
 </script>
