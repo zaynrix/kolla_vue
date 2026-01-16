@@ -116,41 +116,9 @@ export function useAssignment() {
     }
   }
 
-  /**
-   * Update assignment start date
-   * Format: "yyyy-MM-ddTHH:mm:ssZ"
-   */
-  const updateStartDate = async (guid: string, startDate?: string | null): Promise<void> => {
-    loading.value = true
-    error.value = null
-    try {
-      await api.assignment.setAssignmentStartDate(guid, startDate)
-      await loadAllAssignments()
-    } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to update start date')
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * Update assignment deadline date
-   * Format: "yyyy-MM-ddTHH:mm:ssZ"
-   */
-  const updateDeadlineDate = async (guid: string, deadlineDate?: string | null): Promise<void> => {
-    loading.value = true
-    error.value = null
-    try {
-      await api.assignment.setAssignmentDeadlineDate(guid, deadlineDate)
-      await loadAllAssignments()
-    } catch (err) {
-      error.value = err instanceof Error ? err : new Error('Failed to update deadline date')
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
+  // Note: Assignment API doesn't have SetStartDate or SetDeadlineDate endpoints
+  // These methods have been removed as they don't exist in the backend API
+  // Use updateDuration instead - dates can be used to calculate duration
 
   /**
    * Update assignment duration
@@ -296,8 +264,7 @@ export function useAssignment() {
     createAssignment,
     updateDisplayName,
     updateDescription,
-    updateStartDate,
-    updateDeadlineDate,
+    // updateStartDate and updateDeadlineDate removed - API doesn't support these endpoints
     updateDuration,
     updateAssignee,
     updateRequiredRole,

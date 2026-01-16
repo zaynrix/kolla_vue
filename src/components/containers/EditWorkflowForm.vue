@@ -34,7 +34,7 @@
       </div>
 
       <div class="form-group">
-        <label for="workflow-deadline" class="form-label">Deadline *</label>
+        <label for="workflow-deadline" class="form-label">Deadline</label>
         <div class="date-input-wrapper">
           <svg class="date-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -44,9 +44,10 @@
             v-model="formData.deadline"
             type="datetime-local"
             class="form-input date-input"
-            required
+            disabled
           />
         </div>
+        <small class="form-hint">Deadline cannot be changed after workflow creation</small>
       </div>
 
       <div v-if="error" class="form-error">
@@ -119,20 +120,51 @@ async function handleSubmit() {
 
   error.value = null
   try {
-    // Convert deadline to ISO string
-    const deadlineISO = formData.value.deadline
-      ? new Date(formData.value.deadline).toISOString()
-      : undefined
-
-    await updateWorkflow(props.workflow.id, {
-      name: formData.value.name,
-      description: formData.value.description,
-      deadline: deadlineISO,
-    })
-
+    console.log('[EditWorkflowForm] Submitting update for workflow:', props.workflow.id)
+    console.log('[EditWorkflowForm] Form data:', formData.value)
+    
+    // Build update request with only changed fields
+    const updateRequest: Partial<CreateWorkflowRequest> = {}
+    
+    // Check if name changed
+    if (formData.value.name !== props.workflow.name) {
+      updateRequest.name = formData.value.name
+      console.log('[EditWorkflowForm] Name changed:', props.workflow.name, '->', formData.value.name)
+    }
+    
+    // Check if description changed
+    const originalDescription = props.workflow.description || ''
+    if (formData.value.description !== originalDescription) {
+      updateRequest.description = formData.value.description
+      console.log('[EditWorkflowForm] Description changed')
+    }
+    
+    // Note: Deadline cannot be updated - the API doesn't have a SetDeadlineDate endpoint
+    // Deadline can only be set during workflow creation
+    // We don't include deadline in the update request
+    
+    // Only update if there are changes
+    if (Object.keys(updateRequest).length === 0) {
+      console.log('[EditWorkflowForm] No changes detected')
+      error.value = 'No changes to save'
+      return
+    }
+    
+    console.log('[EditWorkflowForm] Update request:', updateRequest)
+    
+    await updateWorkflow(props.workflow.id, updateRequest)
+    
+    console.log('[EditWorkflowForm] Workflow updated successfully')
     emit('updated', props.workflow.id)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to update workflow'
+    console.error('[EditWorkflowForm] Error updating workflow:', err)
+    const errorMessage = err instanceof Error 
+      ? err.message 
+      : typeof err === 'object' && err !== null && 'message' in err
+      ? String(err.message)
+      : 'Failed to update workflow'
+    error.value = errorMessage
+    console.error('[EditWorkflowForm] Error message:', errorMessage)
   }
 }
 </script>
@@ -200,6 +232,12 @@ async function handleSubmit() {
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
   font-size: var(--text-sm);
+}
+
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
 }
 
 .form-input,
@@ -304,6 +342,13 @@ async function handleSubmit() {
 .date-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.date-input:disabled {
+  background: var(--color-background);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .date-input:focus + .date-icon,

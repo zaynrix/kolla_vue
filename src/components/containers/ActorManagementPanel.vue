@@ -97,7 +97,8 @@
 
         <!-- Users Table -->
         <div class="users-table-container">
-          <table class="users-table" v-if="filteredActors.length > 0">
+          <!-- Desktop Table View -->
+          <table class="users-table users-table--desktop" v-if="filteredActors.length > 0">
             <thead>
               <tr>
                 <th class="col-name">Name</th>
@@ -169,6 +170,73 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile Card View -->
+          <div class="users-cards users-cards--mobile" v-if="filteredActors.length > 0">
+            <div
+              v-for="actor in filteredActors"
+              :key="actor.guid"
+              class="user-card"
+              @click="handleActorClick(actor.guid)"
+            >
+              <div class="user-card-header">
+                <div class="user-name-cell">
+                  <svg class="user-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  <div class="user-name">{{ actor.displayName }}</div>
+                </div>
+                <span v-if="actor.role" class="badge">
+                  {{ actor.role.displayName }}
+                </span>
+                <span v-else class="badge badge--no-role">No role</span>
+              </div>
+              <div class="user-card-body">
+                <div class="user-card-stats">
+                  <div class="user-stat-item">
+                    <span class="user-stat-label">Total Tasks</span>
+                    <span class="task-count">{{ getUserTaskCount(actor.guid) }}</span>
+                  </div>
+                  <div class="user-stat-item">
+                    <span class="user-stat-label">Pending</span>
+                    <span class="task-count task-count--pending">{{ getUserPendingCount(actor.guid) }}</span>
+                  </div>
+                  <div class="user-stat-item">
+                    <span class="user-stat-label">In Progress</span>
+                    <span class="task-count task-count--in-progress">{{ getUserInProgressCount(actor.guid) }}</span>
+                  </div>
+                  <div class="user-stat-item">
+                    <span class="user-stat-label">Completed</span>
+                    <span class="task-count task-count--completed">{{ getUserCompletedCount(actor.guid) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="user-card-footer" @click.stop>
+                <div class="action-buttons">
+                  <button
+                    @click.stop="handleEdit(actor)"
+                    class="btn btn--secondary btn--small"
+                    title="Edit User"
+                  >
+                    <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    @click.stop="handleDelete(actor.guid)"
+                    class="btn btn--secondary btn--small btn--delete"
+                    title="Delete User"
+                  >
+                    <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <!-- No Search Results -->
           <div v-if="searchQuery && filteredActors.length === 0" class="empty-state">
@@ -861,6 +929,22 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+/* Mobile Card View - Hidden on desktop */
+.users-cards--mobile {
+  display: none;
+}
+
+/* Desktop Table View - Hidden on mobile */
+@media (max-width: 767px) {
+  .users-table--desktop {
+    display: none;
+  }
+
+  .users-cards--mobile {
+    display: block;
+  }
+}
+
 @media (max-width: 768px) {
   .actor-management-panel {
     padding: var(--spacing-md);
@@ -877,26 +961,103 @@ async function handleDelete(guid: string) {
   }
 
   .users-table-container {
-    overflow-x: auto;
+    overflow: visible;
   }
+}
 
-  .users-table {
-    font-size: var(--text-sm);
-  }
+/* Mobile Card Styles */
+.users-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
 
-  .users-table th,
-  .users-table td {
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
+.user-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  overflow: hidden;
+  cursor: pointer;
+}
 
-  .col-pending,
-  .col-in-progress,
-  .col-completed {
-    display: none;
-  }
+.user-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
 
-  .action-buttons {
+.user-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-wrap: wrap;
+}
+
+.user-card-body {
+  padding: var(--spacing-md);
+}
+
+.user-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.user-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  align-items: center;
+  padding: var(--spacing-sm);
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.user-stat-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-card-footer {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-background);
+}
+
+.user-card-footer .action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .user-card-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .user-card-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .user-card-footer .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .user-card-footer .action-buttons .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

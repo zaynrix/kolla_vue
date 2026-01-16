@@ -103,9 +103,31 @@
 
       <div class="form-group">
         <label for="step-assignees" class="form-label">Assign To Users</label>
+        
+        <!-- Role Filter Dropdown -->
+        <div class="form-group form-group--inline">
+          <label for="role-filter" class="form-label form-label--small">Filter by Role</label>
+          <select
+            id="role-filter"
+            v-model="selectedRoleGuid"
+            @change="handleRoleFilterChange"
+            class="form-select"
+          >
+            <option value="">All Users</option>
+            <option value="no-role">Users without Role</option>
+            <option
+              v-for="role in roles"
+              :key="role.guid"
+              :value="role.guid"
+            >
+              {{ role.displayName }}
+            </option>
+          </select>
+        </div>
+        
         <div class="assignees-container">
           <div
-            v-for="user in availableUsers"
+            v-for="user in filteredUsers"
             :key="user.id"
             class="assignee-checkbox"
           >
@@ -117,11 +139,18 @@
               class="checkbox-input"
             />
             <label :for="`assignee-${user.id}`" class="checkbox-label">
-              {{ user.username }} ({{ user.role }})
+              <span class="user-name">{{ user.username }}</span>
+              <span class="user-role" v-if="user.role && user.role !== 'No Role'">
+                <span class="role-badge">{{ user.role }}</span>
+              </span>
+              <span class="user-role" v-else>
+                <span class="role-badge role-badge--no-role">No Role</span>
+              </span>
             </label>
           </div>
-          <p v-if="availableUsers.length === 0" class="no-users">
-            No users available.
+          <p v-if="filteredUsers.length === 0" class="no-users">
+            <span v-if="selectedRoleGuid">No users found with the selected role.</span>
+            <span v-else>No users available.</span>
           </p>
         </div>
       </div>
@@ -147,6 +176,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useWorkStep } from '@/composables/useWorkStep'
 import { useActor } from '@/composables/useActor'
+import { useRole } from '@/composables/useRole'
 import { useAuthorization } from '@/composables/useAuthorization'
 import { useWorkStepStore } from '@/stores/workStep'
 import { useWorkflowStore } from '@/stores/workflow'
@@ -171,6 +201,7 @@ const emit = defineEmits<{
 
 const { updateWorkStep, loading } = useWorkStep()
 const { actors, loadActors } = useActor()
+const { roles, loadRoles } = useRole()
 const { isAdmin } = useAuthorization()
 const workStepStore = useWorkStepStore()
 const workflowStore = useWorkflowStore()
@@ -190,6 +221,7 @@ const formData = ref<{
 })
 
 const selectedAssignees = ref<string[]>([])
+const selectedRoleGuid = ref<string>('') // Empty string = all users
 const error = ref<string | null>(null)
 const originalWorkStep = ref<WorkStep | null>(null)
 const originalAssignees = ref<string[]>([])
@@ -243,14 +275,40 @@ const availableUsers = computed(() => {
     id: actor.guid,
     username: actor.displayName,
     email: `${actor.displayName}@example.com`,
-    role: actor.role?.isAdmin ? Role.ADMIN : Role.TEAM_MEMBER,
+    role: actor.role?.displayName || 'No Role', // Show actual role name
+    roleGuid: actor.role?.guid || null, // Keep role GUID for filtering
+    roleObject: actor.role, // Keep role object for reference
     tenantId: undefined,
   }))
 })
 
-onMounted(async () => {
-  await loadActors()
+// Filter users based on selected role
+const filteredUsers = computed(() => {
+  if (!selectedRoleGuid.value) {
+    // Show all users
+    return availableUsers.value
+  }
+  
+  if (selectedRoleGuid.value === 'no-role') {
+    // Show only users without a role
+    return availableUsers.value.filter(user => !user.roleGuid)
+  }
+  
+  // Show only users with the selected role
+  return availableUsers.value.filter(user => user.roleGuid === selectedRoleGuid.value)
 })
+
+onMounted(async () => {
+  await Promise.all([loadActors(), loadRoles()])
+})
+
+// Handle role filter change
+function handleRoleFilterChange() {
+  // Clear selected assignees when filter changes
+  selectedAssignees.value = []
+  console.log('[EditWorkStepForm] Role filter changed to:', selectedRoleGuid.value)
+  console.log('[EditWorkStepForm] Filtered users:', filteredUsers.value.length)
+}
 
 // Helper function to format date for datetime-local input
 function formatDateForInput(date: Date | string | undefined): string {
@@ -390,19 +448,20 @@ async function handleSubmit() {
       updateRequest.description = formData.value.description
     }
 
-    // Duration is calculated automatically based on start date and deadline date
-    // No manual duration updates allowed
-
-    // Always update start date (required field)
-    // Ensure it's always set, even if unchanged, to guarantee it's saved
-    if (formData.value.startDate) {
-      updateRequest.startDate = formatDateForAPI(formData.value.startDate)
-    }
-
-    // Always update deadline date (required field)
-    // Ensure it's always set, even if unchanged, to guarantee it's saved
-    if (formData.value.deadlineDate) {
-      updateRequest.deadlineDate = formatDateForAPI(formData.value.deadlineDate)
+    // Note: Assignment API doesn't have SetStartDate or SetDeadlineDate endpoints
+    // Only duration can be updated via SetDuration endpoint
+    // Calculate duration from dates if both are provided
+    if (formData.value.startDate && formData.value.deadlineDate) {
+      const startDate = new Date(formData.value.startDate)
+      const deadlineDate = new Date(formData.value.deadlineDate)
+      if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
+        const diffMs = deadlineDate.getTime() - startDate.getTime()
+        const calculatedDuration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+        if (calculatedDuration > 0) {
+          updateRequest.duration = calculatedDuration
+          console.log('[EditWorkStepForm] Calculated duration from dates:', calculatedDuration, 'hours')
+        }
+      }
     }
 
     // Only update status if it changed
@@ -537,6 +596,16 @@ async function handleSubmit() {
   gap: var(--spacing-sm);
 }
 
+.form-group--inline {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label--small {
+  font-size: var(--text-xs);
+  font-weight: var(--font-normal);
+  color: var(--color-text-secondary);
+}
+
 .form-label {
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
@@ -634,6 +703,36 @@ async function handleSubmit() {
   font-size: var(--text-sm);
   color: var(--color-text-primary);
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.user-name {
+  font-weight: var(--font-medium);
+}
+
+.user-role {
+  display: inline-flex;
+  align-items: center;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-primary);
+}
+
+.role-badge--no-role {
+  background: var(--color-background);
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border);
 }
 
 .no-users {

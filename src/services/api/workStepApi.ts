@@ -238,30 +238,32 @@ export class WorkStepApiService {
     
     // Priority is now always auto-calculated - no manual priority updates allowed
     
-    // Update start date if provided
-    if (request.startDate !== undefined) {
-      await this.assignmentService.setAssignmentStartDate(id, request.startDate)
-    }
+    // Note: Assignment API doesn't have SetStartDate or SetDeadlineDate endpoints
+    // Only duration can be updated via SetDuration endpoint
+    // If dates are provided, calculate duration from them
     
-    // Update deadline date if provided
-    if (request.deadlineDate !== undefined) {
-      await this.assignmentService.setAssignmentDeadlineDate(id, request.deadlineDate)
-    }
+    let durationToSet: number | undefined = undefined
     
-    // Update duration if provided
     if (request.duration !== undefined && request.duration > 0) {
-      await this.assignmentService.setAssignmentDuration(id, request.duration)
+      // Use explicitly provided duration
+      durationToSet = request.duration
     } else if (request.startDate && request.deadlineDate) {
       // Calculate duration from dates if both are provided and duration not explicitly set
       const startDate = new Date(request.startDate)
       const deadlineDate = new Date(request.deadlineDate)
       if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
         const diffMs = deadlineDate.getTime() - startDate.getTime()
-        const duration = Math.round(diffMs / (1000 * 60 * 60))
-        if (duration > 0) {
-          await this.assignmentService.setAssignmentDuration(id, duration)
+        const calculatedDuration = Math.round(diffMs / (1000 * 60 * 60))
+        if (calculatedDuration > 0) {
+          durationToSet = calculatedDuration
         }
       }
+    }
+    
+    // Update duration if we have a value to set
+    if (durationToSet !== undefined && durationToSet > 0) {
+      console.log('[WorkStepApi] Updating duration:', durationToSet)
+      await this.assignmentService.setAssignmentDuration(id, durationToSet)
     }
     
     // Fetch updated assignment

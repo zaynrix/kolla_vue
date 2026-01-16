@@ -78,6 +78,38 @@
           </div>
         </form>
 
+        <!-- Initial Setup Button (only shown when no users exist) -->
+        <div v-if="!loadingActors && actors.length === 0" class="initial-setup-section">
+          <div class="setup-info">
+            <svg class="setup-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="setup-text">
+              <p class="setup-title">No users found</p>
+              <p class="setup-description">Create the initial Admin role and Manager user to get started</p>
+            </div>
+          </div>
+          <button
+            @click="handleCreateInitialSetup"
+            :disabled="creatingInitialSetup"
+            class="btn btn--primary btn--setup-main"
+          >
+            <span v-if="creatingInitialSetup" class="btn-content">
+              <svg class="btn-spinner" fill="none" viewBox="0 0 24 24">
+                <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"></circle>
+                <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Creating...</span>
+            </span>
+            <span v-else class="btn-content">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              <span>Create Admin Role & Manager User</span>
+            </span>
+          </button>
+        </div>
+
         <!-- Debug Section -->
         <div class="debug-section">
           <button
@@ -111,7 +143,26 @@
                 <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p>No users found. Admin needs to create users first.</p>
+                <p>No users found. Click the button below to create the initial Admin role and Manager user.</p>
+                <button
+                  @click="handleCreateInitialSetup"
+                  :disabled="creatingInitialSetup"
+                  class="btn btn--primary btn--setup"
+                >
+                  <span v-if="creatingInitialSetup" class="btn-content">
+                    <svg class="btn-spinner" fill="none" viewBox="0 0 24 24">
+                      <circle class="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"></circle>
+                      <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating...</span>
+                  </span>
+                  <span v-else class="btn-content">
+                    <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Create Admin Role & Manager User</span>
+                  </span>
+                </button>
               </div>
               <div v-else class="debug-users">
                 <div
@@ -150,13 +201,15 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useActor } from '@/composables/useActor'
+import { useRole } from '@/composables/useRole'
 import { useUserStore } from '@/stores/user'
 import { mapActorToUser } from '@/services/api/mappers'
 import { Role } from '@/types/domain'
 import type { ActorDto } from '@/types/api'
 
 const router = useRouter()
-const { actors, loadActors } = useActor()
+const { actors, loadActors, createActor } = useActor()
+const { roles, loadRoles, createRole } = useRole()
 const userStore = useUserStore()
 
 const name = ref('')
@@ -164,6 +217,7 @@ const loading = ref(false)
 const loadingActors = ref(false)
 const error = ref<string | null>(null)
 const showDebug = ref(false)
+const creatingInitialSetup = ref(false)
 
 onMounted(async () => {
   // Load actors for debug section
@@ -178,6 +232,123 @@ async function loadActorsForDebug() {
     console.error('Failed to load actors for debug:', err)
   } finally {
     loadingActors.value = false
+  }
+}
+
+async function handleCreateInitialSetup() {
+  creatingInitialSetup.value = true
+  error.value = null
+  
+  try {
+    // Step 0: Load existing roles and actors to check what exists
+    console.log('[LoginView] Loading existing roles and actors...')
+    await Promise.all([loadRoles(), loadActors()])
+    
+    // Step 1: Find or create Admin role
+    console.log('[LoginView] Checking for Admin role...')
+    let adminRoleGuid: string | null = null
+    
+    // Check if Admin role already exists
+    const existingAdminRole = roles.value.find(
+      role => role.displayName === 'Admin' && role.isAdmin === true
+    )
+    
+    if (existingAdminRole) {
+      console.log('[LoginView] Admin role already exists:', existingAdminRole.guid)
+      adminRoleGuid = existingAdminRole.guid
+    } else {
+      // Create Admin role
+      try {
+        console.log('[LoginView] Creating Admin role...')
+        adminRoleGuid = await createRole({
+          displayName: 'Admin',
+          isAdmin: true,
+          description: 'Administrator role with full system access',
+        })
+        console.log('[LoginView] Admin role created with GUID:', adminRoleGuid)
+      } catch (createError: any) {
+        // Handle 409 Conflict - role might have been created by another request
+        if (createError?.status === 409 || (createError?.message && createError.message.includes('409'))) {
+          console.log('[LoginView] Admin role creation conflict, reloading roles to find existing...')
+          await loadRoles()
+          const conflictAdminRole = roles.value.find(
+            role => role.displayName === 'Admin' && role.isAdmin === true
+          )
+          if (conflictAdminRole) {
+            adminRoleGuid = conflictAdminRole.guid
+            console.log('[LoginView] Found existing Admin role after conflict:', adminRoleGuid)
+          } else {
+            throw new Error('Admin role creation failed with conflict, but role not found after reload')
+          }
+        } else {
+          throw createError
+        }
+      }
+    }
+    
+    if (!adminRoleGuid) {
+      throw new Error('Failed to get Admin role GUID')
+    }
+    
+    // Step 2: Check if Manager user already exists
+    console.log('[LoginView] Checking for Manager user...')
+    const existingManager = actors.value.find(
+      actor => actor.displayName === 'Manager'
+    )
+    
+    if (existingManager) {
+      console.log('[LoginView] Manager user already exists:', existingManager.guid)
+      // Reload actors to ensure we have the latest data
+      await loadActors()
+      // Auto-fill the name field with "Manager"
+      name.value = 'Manager'
+      console.log('[LoginView] Initial setup: Manager user already exists, skipping creation')
+    } else {
+      // Create Manager user with Admin role
+      try {
+        console.log('[LoginView] Creating Manager user...')
+        const managerActorGuid = await createActor({
+          DisplayName: 'Manager',
+          RoleGuid: adminRoleGuid,
+        })
+        console.log('[LoginView] Manager user created with GUID:', managerActorGuid)
+        
+        // Reload actors to show the new user
+        await loadActors()
+        
+        // Auto-fill the name field with "Manager"
+        name.value = 'Manager'
+      } catch (createError: any) {
+        // Handle 409 Conflict - user might have been created by another request
+        if (createError?.status === 409 || (createError?.message && createError.message.includes('409'))) {
+          console.log('[LoginView] Manager user creation conflict, reloading actors...')
+          await loadActors()
+          const conflictManager = actors.value.find(
+            actor => actor.displayName === 'Manager'
+          )
+          if (conflictManager) {
+            name.value = 'Manager'
+            console.log('[LoginView] Found existing Manager user after conflict')
+          } else {
+            throw new Error('Manager user creation failed with conflict, but user not found after reload')
+          }
+        } else {
+          throw createError
+        }
+      }
+    }
+    
+    console.log('[LoginView] Initial setup completed successfully')
+  } catch (err) {
+    console.error('[LoginView] Failed to create initial setup:', err)
+    const errorMessage = err instanceof Error 
+      ? err.message 
+      : typeof err === 'object' && err !== null && 'message' in err
+      ? String(err.message)
+      : 'Failed to create initial setup. Please try again.'
+    error.value = errorMessage
+  } finally {
+    creatingInitialSetup.value = false
   }
 }
 
@@ -781,6 +952,66 @@ async function handleLogin() {
 .badge-admin {
   color: var(--color-error);
   font-weight: var(--font-bold);
+}
+
+.btn--setup {
+  margin-top: var(--spacing-lg);
+  max-width: 100%;
+}
+
+.btn--setup .btn-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  justify-content: center;
+}
+
+.initial-setup-section {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.setup-info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.setup-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.setup-text {
+  flex: 1;
+}
+
+.setup-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.setup-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.btn--setup-main {
+  width: 100%;
+  margin-top: var(--spacing-sm);
 }
 
 @media (max-width: 768px) {

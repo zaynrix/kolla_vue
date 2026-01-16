@@ -17,6 +17,7 @@ export class ActorApiService {
   }
 
   async createActor(request: CreateActorRequest): Promise<string> {
+    // POST Create(string DisplayName, string? RoleGuid): Guid
     const requestBody: any = {
       DisplayName: request.DisplayName,
     }
@@ -25,8 +26,32 @@ export class ActorApiService {
       requestBody.RoleGuid = request.RoleGuid
     }
     
-    const response = await this.apiClient.post<string>('/Actor/Create', requestBody)
-    return response
+    try {
+      const response = await this.apiClient.post<string | { Guid?: string; guid?: string }>('/Actor/Create', requestBody)
+      
+      // Extract GUID from response - backend returns Guid string
+      let actorGuid: string
+      
+      if (typeof response === 'string') {
+        // Response is a GUID string
+        actorGuid = response.trim().replace(/^["']|["']$/g, '')
+      } else if (response && typeof response === 'object') {
+        // Response might be an object with Guid or guid property
+        actorGuid = (response.Guid || response.guid || '') as string
+      } else {
+        throw new Error('Unexpected response format from Actor/Create')
+      }
+      
+      if (!actorGuid || actorGuid === 'undefined' || actorGuid === 'null' || actorGuid === '') {
+        throw new Error('Failed to get actor GUID from response')
+      }
+      
+      console.log('[ActorApi] Created actor with GUID:', actorGuid)
+      return actorGuid
+    } catch (createError) {
+      console.error('[ActorApi] Error creating actor:', createError)
+      throw new Error(`Failed to create actor: ${createError instanceof Error ? createError.message : 'Unknown error'}`)
+    }
   }
 
   async setActorDisplayName(actorGuid: string, displayName: string): Promise<void> {

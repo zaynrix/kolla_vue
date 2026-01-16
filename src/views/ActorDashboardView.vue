@@ -55,40 +55,34 @@ the     <!-- Header Section -->
     </div>
 
     <div v-else class="actor-dashboard__content">
-      <!-- View Selector - Prominently placed at top -->
+      <!-- View Selector - Modern Toggle Design -->
       <div class="actor-dashboard__view-selector-wrapper">
-        <div class="view-selector-label">View Mode:</div>
-        <div class="actor-dashboard__view-selector">
-          <button
-            :class="['view-btn', { 'view-btn--active': viewMode === 'board' }]"
-            @click="viewMode = 'board'"
-            title="Kanban Board View"
-          >
-            <svg class="view-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
-            </svg>
-            <span>Board</span>
-          </button>
-          <button
-            :class="['view-btn', { 'view-btn--active': viewMode === 'cards' }]"
-            @click="viewMode = 'cards'"
-            title="Card Grid View"
-          >
-            <svg class="view-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-            </svg>
-            <span>Cards</span>
-          </button>
-          <button
-            :class="['view-btn', { 'view-btn--active': viewMode === 'table' }]"
-            @click="viewMode = 'table'"
-            title="Table View"
-          >
-            <svg class="view-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-            </svg>
-            <span>Table</span>
-          </button>
+        <div class="view-selector-container">
+          <span class="view-selector-label">View:</span>
+          <div class="view-toggle-group">
+            <button
+              :class="['view-toggle-btn', { 'view-toggle-btn--active': viewMode === 'board' }]"
+              @click="viewMode = 'board'"
+              title="Kanban Board View"
+              aria-label="Board View"
+            >
+              <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+              </svg>
+              <span class="view-toggle-text">Board</span>
+            </button>
+            <button
+              :class="['view-toggle-btn', { 'view-toggle-btn--active': viewMode === 'cards' }]"
+              @click="viewMode = 'cards'"
+              title="Card Grid View"
+              aria-label="Cards View"
+            >
+              <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+              </svg>
+              <span class="view-toggle-text">Cards</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -270,104 +264,6 @@ the     <!-- Header Section -->
               </WorkStepCard>
       </div>
 
-      <!-- Table View - Usability I: Alternative representation -->
-      <div v-else-if="viewMode === 'table'" class="actor-dashboard__table">
-        <table class="workstep-table">
-          <thead>
-            <tr>
-              <th class="col-title">Title</th>
-              <th class="col-priority">Priority</th>
-              <th class="col-duration">Duration</th>
-              <th class="col-deadline">Deadline</th>
-              <th class="col-status">Status</th>
-              <th class="col-workflow">Workflow</th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="workStep in displayedWorkSteps"
-              :key="workStep.id"
-              :class="{
-                'row--urgent': isUrgentStep(workStep),
-                'row--completed': workStep.status === 'COMPLETED',
-              }"
-              @click="handleView(workStep.id)"
-            >
-              <td class="col-title">
-                <div class="workstep-title-cell">
-                  <div class="workstep-title">{{ workStep.title }}</div>
-                  <div v-if="workStep.description" class="workstep-description">{{ workStep.description }}</div>
-                </div>
-              </td>
-              <td class="col-priority">
-                <span :class="['priority-badge', `priority--${getPriorityForStep(workStep).toLowerCase().replace('_', '-')}`]">
-                  {{ getPriorityLabel(getPriorityForStep(workStep)) }}
-                </span>
-              </td>
-              <td class="col-duration">{{ workStep.duration }}h</td>
-              <td class="col-deadline">
-                <span v-if="workStep.deadlineDate" class="deadline-text">
-                  {{ formatDeadline(workStep.deadlineDate) }}
-                </span>
-                <span v-else class="deadline-text deadline-text--none">—</span>
-              </td>
-              <td class="col-status">
-                <span :class="['status-badge', `status--${workStep.status.toLowerCase().replace('_', '-')}`]">
-                  {{ workStep.status.replace('_', ' ') }}
-                </span>
-              </td>
-              <td class="col-workflow">
-                <span class="workflow-name">{{ getWorkflowName(workStep.workflowId) }}</span>
-              </td>
-              <td class="col-actions" @click.stop>
-                <div class="action-buttons">
-                  <button
-                    v-if="isAdmin"
-                    @click="handleViewDetails(workStep.id)"
-                    class="btn btn--small btn--secondary"
-                    title="View Details"
-                  >
-                    👁️
-                  </button>
-                  <button
-                    v-if="isAdmin"
-                    @click="handleEdit(workStep.id)"
-                    class="btn btn--small btn--secondary"
-                    title="Edit"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    v-if="isAdmin"
-                    @click="handleReassign(workStep.id)"
-                    class="btn btn--small btn--secondary"
-                    title="Reassign"
-                  >
-                    🔄
-                  </button>
-                  <button
-                    v-if="isAdmin"
-                    @click="handleDelete(workStep.id)"
-                    class="btn btn--small btn--danger"
-                    title="Delete"
-                  >
-                    🗑️
-                  </button>
-                  <button
-                    v-if="workStep.status !== 'COMPLETED'"
-                    @click="handleComplete(workStep.id)"
-                    class="btn btn--small btn--primary"
-                  >
-                    Complete
-                  </button>
-                  <span v-else class="text-muted">Completed</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </div>
 
     <!-- Modals -->
@@ -463,7 +359,7 @@ import ConfirmationDialog from '@/components/presenters/ConfirmationDialog.vue'
 import type { WorkStep, Priority, TaskStatus } from '@/types/domain'
 import { Priority as PriorityEnum, TaskStatus as TaskStatusEnum } from '@/types/domain'
 
-type ViewMode = 'board' | 'cards' | 'table'
+type ViewMode = 'board' | 'cards'
 
 const viewMode = ref<ViewMode>('board')
 const selectedUserId = ref<string>('')
@@ -1483,142 +1379,140 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
 }
 
 
+/* Modern View Selector - Toggle Style */
 .actor-dashboard__view-selector-wrapper {
+  margin-bottom: var(--spacing-xl);
+}
+
+.view-selector-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg) var(--spacing-xl);
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
   background: var(--color-surface);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border-light);
-  flex-wrap: wrap;
+  width: fit-content;
 }
 
 .view-selector-label {
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
   white-space: nowrap;
+  padding: 0 var(--spacing-sm);
 }
 
-.actor-dashboard__view-selector {
+.view-toggle-group {
   display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-start;
-}
-
-.view-btn-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.view-btn {
-  padding: var(--spacing-md) var(--spacing-xl);
-  border: 2px solid var(--color-border);
+  gap: var(--spacing-xs);
+  background: var(--color-background);
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  font-weight: var(--font-medium);
-  font-size: var(--text-base);
+  padding: var(--spacing-xs);
+  position: relative;
+}
+
+.view-toggle-btn {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
   position: relative;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  min-width: 120px;
+  white-space: nowrap;
+  min-width: 100px;
   justify-content: center;
 }
 
-.view-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transition: left 0.5s ease;
+.view-toggle-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.view-btn:hover::before {
-  left: 100%;
+.view-toggle-text {
+  transition: all 0.2s ease;
 }
 
-.view-btn:hover {
-  background: linear-gradient(135deg, var(--color-surface-hover) 0%, var(--color-surface) 100%);
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  color: var(--color-primary);
+.view-toggle-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
 }
 
-.view-btn:hover .view-btn-icon {
+.view-toggle-btn:hover .view-toggle-icon {
   transform: scale(1.1);
 }
 
-.view-btn--active {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+.view-toggle-btn--active {
+  background: var(--color-primary);
   color: var(--color-text-inverse);
-  border-color: var(--color-primary);
-  box-shadow: 
-    0 4px 12px rgba(37, 99, 235, 0.3),
-    0 2px 4px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
   font-weight: var(--font-semibold);
-  transform: translateY(-1px);
 }
 
-.view-btn--active::before {
-  display: none;
+.view-toggle-btn--active:hover {
+  background: var(--color-primary-dark);
+  color: var(--color-text-inverse);
 }
 
-.view-btn--active:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
-  transform: translateY(-2px);
-  box-shadow: 
-    0 6px 16px rgba(37, 99, 235, 0.4),
-    0 4px 8px rgba(37, 99, 235, 0.3);
-}
-
-.view-btn--active .view-btn-icon {
+.view-toggle-btn--active .view-toggle-icon {
   transform: scale(1.1);
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
-  .actor-dashboard__view-selector-wrapper {
-    flex-direction: column;
-    align-items: stretch;
-    padding: var(--spacing-md);
+  .view-selector-container {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .view-selector-label {
-    text-align: center;
-    margin-bottom: var(--spacing-sm);
+    font-size: var(--text-xs);
+    padding: 0 var(--spacing-xs);
   }
 
-  .actor-dashboard__view-selector {
+  .view-toggle-group {
+    flex: 1;
     justify-content: center;
   }
 
-  .view-btn {
+  .view-toggle-btn {
     flex: 1;
-    min-width: 100px;
+    min-width: 0;
     padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
   }
 
-  .view-btn-icon {
+  .view-toggle-icon {
     width: 16px;
     height: 16px;
   }
+
+  .view-toggle-text {
+    display: none;
+  }
 }
+
+@media (max-width: 480px) {
+  .view-selector-container {
+    padding: var(--spacing-xs);
+  }
+
+  .view-toggle-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+}
+
+/* Old view selector styles removed - using new toggle design */
 
 .actor-dashboard__summary {
   display: grid;
@@ -1785,321 +1679,7 @@ async function handleAssignWorkflow(workStepId: string, workflowId: string) {
   }
 }
 
-.actor-dashboard__table {
-  width: 100%;
-  margin-top: var(--spacing-xl);
-  overflow-x: auto;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  padding: var(--spacing-lg);
-}
-
-.workstep-table {
-  width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  table-layout: fixed;
-}
-
-.workstep-table thead {
-  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 100%);
-  border-bottom: 2px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.workstep-table th {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  text-align: left;
-  font-weight: var(--font-semibold);
-  font-size: var(--text-sm);
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-
-.workstep-table td {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--color-border-light);
-  vertical-align: middle;
-  background: var(--color-surface);
-  transition: all var(--transition-base);
-}
-
-.workstep-table tbody tr {
-  cursor: pointer;
-  transition: all var(--transition-base);
-  position: relative;
-}
-
-.workstep-table tbody tr::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background var(--transition-base);
-}
-
-.workstep-table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.03) 0%, transparent 100%);
-}
-
-.workstep-table tbody tr:hover::before {
-  background: var(--color-primary);
-}
-
-.workstep-table tbody tr:hover td {
-  background: transparent;
-}
-
-.workstep-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.row--urgent {
-  background-color: var(--color-error-light);
-}
-
-.row--urgent:hover {
-  background-color: var(--color-error-light);
-  opacity: 0.9;
-}
-
-.row--completed {
-  opacity: 0.6;
-}
-
-.row--completed:hover {
-  opacity: 0.8;
-}
-
-.col-title {
-  width: 30%;
-  min-width: 200px;
-  max-width: 350px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.workstep-title-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.workstep-title {
-  font-weight: 600;
-  color: var(--color-text-primary, #1a1a1a);
-  font-size: 0.9375rem;
-  line-height: 1.4;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.workstep-description {
-  font-size: 0.8125rem;
-  color: var(--color-text-primary, #1a1a1a);
-  line-height: 1.5;
-  margin: 0;
-  margin-top: 0.25rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.col-priority {
-  width: 12%;
-  min-width: 100px;
-  white-space: nowrap;
-}
-
-.col-duration {
-  width: 8%;
-  min-width: 70px;
-  text-align: right;
-}
-
-.col-deadline {
-  width: 15%;
-  min-width: 140px;
-  white-space: nowrap;
-}
-
-.deadline-text {
-  font-size: 0.875rem;
-  color: var(--color-text-primary, #1a1a1a);
-}
-
-.deadline-text--none {
-  color: var(--color-text-tertiary, #999);
-  font-style: italic;
-}
-
-.col-status {
-  width: 12%;
-  min-width: 100px;
-}
-
-.col-workflow {
-  width: 20%;
-  min-width: 150px;
-  color: var(--color-text-primary, #1a1a1a);
-}
-
-.col-actions {
-  width: 16%;
-  min-width: 120px;
-  text-align: right;
-}
-
-.workflow-name {
-  color: var(--color-text-primary, #1a1a1a);
-}
-
-.priority-badge {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.priority--short-term {
-  background-color: var(--color-error-light);
-  color: var(--color-error);
-}
-
-.priority--mid-term {
-  background-color: var(--color-warning-light);
-  color: var(--color-warning);
-}
-
-.priority--long-term {
-  background-color: var(--color-info-light);
-  color: var(--color-info);
-}
-
-.col-duration {
-  min-width: 70px;
-  text-align: center;
-  color: var(--color-text-primary);
-  font-weight: 500;
-}
-
-.col-status {
-  min-width: 110px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.625rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.status--pending {
-  background-color: var(--color-warning-light);
-  color: var(--color-warning);
-}
-
-.status--in-progress {
-  background-color: var(--color-info-light);
-  color: var(--color-info);
-}
-
-.status--completed {
-  background-color: var(--color-success-light);
-  color: var(--color-success);
-}
-
-.status--blocked {
-  background-color: var(--color-error-light);
-  color: var(--color-error);
-}
-
-.col-workflow {
-  min-width: 120px;
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-}
-
-.col-actions {
-  min-width: 200px;
-  text-align: right;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.btn--secondary {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-}
-
-.btn--secondary:hover {
-  background: var(--color-surface-hover);
-}
-
-.text-muted {
-  color: var(--color-text-tertiary);
-  font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-  .workstep-table {
-    font-size: 0.875rem;
-  }
-
-  .workstep-table th,
-  .workstep-table td {
-    padding: 0.75rem 0.5rem;
-  }
-
-  .col-duration,
-  .col-workflow {
-    display: none;
-  }
-
-  .col-title {
-    min-width: 180px;
-    max-width: 250px;
-  }
-}
-
-@media (max-width: 480px) {
-  .workstep-table th,
-  .workstep-table td {
-    padding: 0.625rem 0.375rem;
-    font-size: 0.8125rem;
-  }
-
-  .col-status {
-    display: none;
-  }
-
-  .priority-badge,
-  .status-badge {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.6875rem;
-  }
-}
+/* Table view styles removed - only Board and Cards views available */
 
 .btn {
   padding: 0.5rem 1rem;

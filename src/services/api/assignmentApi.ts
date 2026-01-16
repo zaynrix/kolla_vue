@@ -135,59 +135,10 @@ export class AssignmentApiService {
     })
   }
 
-  /**
-   * PATCH /Assignment/SetStartDate
-   * Format: "yyyy-MM-ddTHH:mm:ssZ"
-   */
-  async setAssignmentStartDate(guid: string, startDate?: string | null): Promise<void> {
-    // Format date to "yyyy-MM-ddTHH:mm:ssZ" format
-    const formatDate = (dateString: string | null | undefined): string | null => {
-      if (!dateString) return null
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return null
-      
-      const year = date.getUTCFullYear()
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-      const day = String(date.getUTCDate()).padStart(2, '0')
-      const hours = String(date.getUTCHours()).padStart(2, '0')
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0')
-      
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`
-    }
-
-    await this.apiClient.patch<void>(`/Assignment/SetStartDate`, {
-      Guid: guid,
-      StartDate: formatDate(startDate),
-    })
-  }
-
-  /**
-   * PATCH /Assignment/SetDeadlineDate
-   * Format: "yyyy-MM-ddTHH:mm:ssZ"
-   */
-  async setAssignmentDeadlineDate(guid: string, deadlineDate?: string | null): Promise<void> {
-    // Format date to "yyyy-MM-ddTHH:mm:ssZ" format
-    const formatDate = (dateString: string | null | undefined): string | null => {
-      if (!dateString) return null
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return null
-      
-      const year = date.getUTCFullYear()
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-      const day = String(date.getUTCDate()).padStart(2, '0')
-      const hours = String(date.getUTCHours()).padStart(2, '0')
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0')
-      
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`
-    }
-
-    await this.apiClient.patch<void>(`/Assignment/SetDeadlineDate`, {
-      Guid: guid,
-      DeadlineDate: formatDate(deadlineDate),
-    })
-  }
+  // Note: Assignment API doesn't have SetStartDate or SetDeadlineDate endpoints
+  // These methods have been removed as they don't exist in the backend API
+  // Only duration can be updated via SetDuration endpoint
+  // Dates can be used to calculate duration, but cannot be set directly
 
   async setAssignmentAssignee(guid: string, assigneeGuid?: string | null): Promise<void> {
     await this.apiClient.patch<void>(`/Assignment/SetAssignee`, {

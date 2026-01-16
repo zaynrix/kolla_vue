@@ -141,45 +141,81 @@ export class WorkflowApiService {
     id: string,
     request: Partial<CreateWorkflowRequest>
   ): Promise<Workflow> {
+    console.log('[WorkflowApi] updateWorkflow called with:', { id, request })
+    
+    const errors: string[] = []
+    
     // Update Objective using PATCH endpoints
-    if (request.name) {
-      await this.apiClient.patch<void>(
-        `/Objective/SetDisplayName`,
-        { Guid: id, DisplayName: request.name }
-      )
+    if (request.name !== undefined) {
+      try {
+        console.log('[WorkflowApi] Updating display name:', request.name)
+        await this.apiClient.patch<void>(
+          `/Objective/SetDisplayName`,
+          { Guid: id, DisplayName: request.name }
+        )
+        console.log('[WorkflowApi] Display name updated successfully')
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update display name'
+        console.error('[WorkflowApi] Error updating display name:', errorMsg)
+        errors.push(`Failed to update name: ${errorMsg}`)
+      }
     }
     
     if (request.description !== undefined) {
-      await this.apiClient.patch<void>(
-        `/Objective/SetDescription`,
-        { Guid: id, Description: request.description ?? null }
-      )
+      try {
+        console.log('[WorkflowApi] Updating description:', request.description)
+        await this.apiClient.patch<void>(
+          `/Objective/SetDescription`,
+          { Guid: id, Description: request.description ?? null }
+        )
+        console.log('[WorkflowApi] Description updated successfully')
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to update description'
+        console.error('[WorkflowApi] Error updating description:', errorMsg)
+        errors.push(`Failed to update description: ${errorMsg}`)
+      }
     }
     
+    // Note: Deadline cannot be updated via API - there's no SetDeadlineDate endpoint
+    // The deadline can only be set during creation
     if (request.deadline !== undefined) {
-      await this.apiClient.patch<void>(
-        `/Objective/SetDeadlineDate`,
-        { Guid: id, DeadlineDate: request.deadline ?? null }
-      )
+      console.warn('[WorkflowApi] Deadline update requested but SetDeadlineDate endpoint does not exist in API')
+      // Don't throw an error, just log a warning - deadline updates are not supported
+      // The deadline will remain unchanged
+    }
+    
+    // If any errors occurred, throw an aggregated error
+    if (errors.length > 0) {
+      const errorMessage = errors.join('; ')
+      console.error('[WorkflowApi] Update workflow failed with errors:', errorMessage)
+      throw new Error(errorMessage)
     }
     
     // Fetch updated objective
-    const objective = await this.apiClient.get<ObjectiveDto>(
-      `/Objective/Get/${id}`
-    )
-    
-    return {
-      id: objective.guid,
-      name: objective.displayName,
-      description: objective.description,
-      workSteps: [],
-      objectives: [],
-      createdBy: 'system',
-      workflowManagerId: 'system',
-      tenantId: request.tenantId,
-      deadline: objective.deadlineDate ? new Date(objective.deadlineDate) : undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    try {
+      console.log('[WorkflowApi] Fetching updated objective:', id)
+      const objective = await this.apiClient.get<ObjectiveDto>(
+        `/Objective/Get/${id}`
+      )
+      console.log('[WorkflowApi] Fetched updated objective:', objective)
+      
+      return {
+        id: objective.guid,
+        name: objective.displayName,
+        description: objective.description,
+        workSteps: [],
+        objectives: [],
+        createdBy: 'system',
+        workflowManagerId: 'system',
+        tenantId: request.tenantId,
+        deadline: objective.deadlineDate ? new Date(objective.deadlineDate) : undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch updated workflow'
+      console.error('[WorkflowApi] Error fetching updated objective:', errorMsg)
+      throw new Error(errorMsg)
     }
   }
 

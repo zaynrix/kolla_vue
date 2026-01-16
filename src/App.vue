@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotification } from '@/composables/useNotification'
@@ -65,10 +65,32 @@ function closeMobileMenu() {
 watch(() => route.path, () => {
   showMobileMenu.value = false
 })
+
+// Lock body scroll when drawer is open (mobile)
+watch(showMobileMenu, (isOpen) => {
+  if (isOpen) {
+    // Prevent body scroll when drawer is open
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+  } else {
+    // Restore body scroll when drawer is closed
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.width = ''
+  }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  document.body.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.width = ''
+})
 </script>
 
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'drawer-open': showMobileMenu }">
     <header v-if="isAuthenticated && !isLoginPage" class="app-header">
       <div class="header-container">
         <!-- Left Section: Logo + Mobile Menu Toggle -->
@@ -111,7 +133,7 @@ watch(() => route.path, () => {
           </RouterLink>
         </nav>
 
-        <!-- Right Section: User Actions -->
+        <!-- Right Section: User Actions (Hidden on mobile - available in drawer) -->
         <div class="header-right">
           <ThemeToggle />
           
@@ -144,13 +166,23 @@ watch(() => route.path, () => {
         </div>
       </div>
 
-      <!-- Mobile Navigation Drawer -->
-      <transition name="drawer">
-        <div v-if="showMobileMenu" class="drawer-overlay" @click="closeMobileMenu"></div>
-      </transition>
-      
-      <transition name="drawer-slide">
-        <aside v-if="showMobileMenu" class="drawer">
+      <!-- Mobile Navigation Drawer - Must be outside app-main to be above all content -->
+      <Teleport to="body">
+        <transition name="drawer">
+          <div 
+            v-if="showMobileMenu" 
+            class="drawer-overlay" 
+            @click="closeMobileMenu"
+            @touchstart.prevent="closeMobileMenu"
+          ></div>
+        </transition>
+        
+        <transition name="drawer-slide">
+          <aside 
+            v-if="showMobileMenu" 
+            class="drawer"
+            @click.stop
+          >
           <div class="drawer-header">
             <div class="drawer-brand">
               <img :src="logo" alt="TH Brandenburg Logo" class="drawer-logo" />
@@ -229,8 +261,9 @@ watch(() => route.path, () => {
               </button>
             </div>
           </div>
-        </aside>
-      </transition>
+          </aside>
+        </transition>
+      </Teleport>
     </header>
 
     <main class="app-main">
@@ -251,6 +284,12 @@ watch(() => route.path, () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* When drawer is open, ensure content stays in place */
+#app.drawer-open {
+  overflow: hidden;
 }
 
 /* Header Base Styles */
@@ -321,6 +360,13 @@ watch(() => route.path, () => {
   flex-shrink: 0;
 }
 
+/* Hide header-right on mobile - these features are available in the drawer */
+@media (max-width: 767px) {
+  .header-right {
+    display: none;
+  }
+}
+
 /* Brand/Logo Section */
 .header-brand {
   display: flex;
@@ -342,7 +388,7 @@ watch(() => route.path, () => {
 @media (max-width: 767px) {
   .brand-link {
     gap: var(--spacing-xs);
-    max-width: calc(100vw - 120px); /* Leave space for menu toggle and actions */
+    max-width: calc(100vw - 80px); /* Leave space for menu toggle only (header-right is hidden) */
   }
 }
 
@@ -782,22 +828,25 @@ watch(() => route.path, () => {
 
 /* Drawer Overlay */
 .drawer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  z-index: 999;
+  z-index: 9999 !important; /* Above header and all other elements */
+  touch-action: none; /* Prevent scrolling on overlay */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+  pointer-events: auto; /* Ensure overlay captures clicks */
 }
 
 /* Drawer Sidebar */
 .drawer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
   width: 280px;
   max-width: 85vw;
   background: var(--header-gradient);
@@ -805,11 +854,17 @@ watch(() => route.path, () => {
   animation: gradientShift 15s ease infinite;
   color: var(--color-text-inverse);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  z-index: 10000 !important; /* Above overlay and all other elements */
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y; /* Allow vertical scrolling only */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+  transform: translateX(0); /* Ensure drawer is positioned correctly */
+  pointer-events: auto; /* Ensure drawer captures clicks */
+  isolation: isolate; /* Create new stacking context */
 }
 
 .drawer-header {
@@ -849,12 +904,16 @@ watch(() => route.path, () => {
   justify-content: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   background: rgba(255, 255, 255, 0.1);
   border: none;
   border-radius: var(--radius-md);
   color: var(--color-text-inverse);
   cursor: pointer;
   transition: all var(--transition-base);
+  touch-action: manipulation; /* Improve touch response */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .drawer-close svg {
@@ -888,6 +947,9 @@ watch(() => route.path, () => {
   font-weight: var(--font-medium);
   font-size: var(--text-base);
   background: rgba(255, 255, 255, 0.05);
+  touch-action: manipulation; /* Improve touch response */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; /* Prevent text selection on tap */
 }
 
 .drawer-nav-link:hover {
@@ -1033,6 +1095,16 @@ watch(() => route.path, () => {
   transform: translateX(-100%);
 }
 
+/* Prevent drawer from being dragged outside viewport */
+.drawer {
+  will-change: transform; /* Optimize animation performance */
+}
+
+/* Ensure drawer overlay captures all touch events */
+.drawer-overlay {
+  will-change: opacity;
+}
+
 /* Tablet Styles (768px - 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {
   .app-title {
@@ -1099,7 +1171,61 @@ watch(() => route.path, () => {
 @media (min-width: 768px) {
   .drawer-overlay,
   .drawer {
-    display: none;
+    display: none !important; /* Force hide on desktop */
+  }
+}
+
+/* Ensure drawer is always on top on mobile */
+@media (max-width: 767px) {
+  .drawer-overlay {
+    z-index: 9999 !important;
+  }
+  
+  .drawer {
+    z-index: 10000 !important;
+  }
+  
+  /* Ensure header doesn't overlap drawer */
+  .app-header {
+    z-index: 1000; /* Lower than drawer */
+  }
+  
+  /* Ensure main content is below drawer */
+  .app-main {
+    position: relative;
+    z-index: 1; /* Below drawer */
+  }
+  
+  /* Ensure all view content is below drawer */
+  .app-main {
+    z-index: 1 !important;
+  }
+  
+  .app-main > * {
+    position: relative;
+    z-index: 1 !important;
+  }
+  
+  /* Ensure RouterView and all its children are below drawer */
+  .app-main :deep(*) {
+    position: relative;
+    z-index: 1 !important;
+  }
+  
+  /* Override any high z-index in views - use more specific selectors */
+  .app-main :deep(.hero-section),
+  .app-main :deep(.hero-content),
+  .app-main :deep(.dashboard-section),
+  .app-main :deep(.dashboard-card),
+  .app-main :deep(.features-section),
+  .app-main :deep(.home-view),
+  .app-main :deep([class*="hero"]),
+  .app-main :deep([class*="dashboard"]),
+  .app-main :deep([class*="card"]),
+  .app-main :deep([class*="section"]),
+  .app-main :deep([class*="view"]) {
+    z-index: 1 !important;
+    position: relative !important;
   }
 }
 

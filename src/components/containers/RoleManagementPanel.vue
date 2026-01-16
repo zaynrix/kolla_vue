@@ -80,7 +80,8 @@
 
       <!-- Roles List -->
       <div v-if="roles.length > 0" class="roles-list-container">
-        <table class="roles-table">
+        <!-- Desktop Table View -->
+        <table class="roles-table roles-table--desktop">
           <thead>
             <tr>
               <th class="col-name">Role Name</th>
@@ -149,6 +150,68 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Mobile Card View -->
+        <div class="roles-cards roles-cards--mobile">
+          <div
+            v-for="role in roles"
+            :key="role.guid"
+            class="role-card"
+            :class="{ 'role-card--admin': role.isAdmin }"
+          >
+            <div class="role-card-header">
+              <div class="role-name-cell">
+                <svg class="role-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                <div class="role-name">{{ role.displayName }}</div>
+              </div>
+              <span v-if="role.isAdmin" class="badge badge--admin">
+                <svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+                <span>Admin</span>
+              </span>
+              <span v-else class="badge badge--no-admin">
+                <svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Standard</span>
+              </span>
+            </div>
+            <div class="role-card-body">
+              <div class="role-card-field">
+                <span class="role-card-label">Description:</span>
+                <span v-if="role.description" class="role-description">{{ role.description }}</span>
+                <span v-else class="role-description-empty">No description</span>
+              </div>
+            </div>
+            <div class="role-card-footer" @click.stop>
+              <div class="action-buttons">
+                <button
+                  @click.stop="handleEdit(role)"
+                  class="btn btn--secondary btn--small"
+                  title="Edit Role"
+                >
+                  <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                  <span>Edit</span>
+                </button>
+                <button
+                  @click.stop="handleDelete(role.guid)"
+                  class="btn btn--secondary btn--small btn--delete"
+                  title="Delete Role"
+                >
+                  <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Empty State -->
@@ -709,6 +772,22 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+/* Mobile Card View - Hidden on desktop */
+.roles-cards--mobile {
+  display: none;
+}
+
+/* Desktop Table View - Hidden on mobile */
+@media (max-width: 767px) {
+  .roles-table--desktop {
+    display: none;
+  }
+
+  .roles-cards--mobile {
+    display: block;
+  }
+}
+
 @media (max-width: 768px) {
   .role-management-panel {
     padding: var(--spacing-md);
@@ -725,24 +804,91 @@ async function handleDelete(guid: string) {
   }
 
   .roles-list-container {
-    overflow-x: auto;
+    overflow: visible;
   }
+}
 
-  .roles-table {
-    font-size: var(--text-sm);
-  }
+/* Mobile Card Styles */
+.roles-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
 
-  .roles-table th,
-  .roles-table td {
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
+.role-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  overflow: hidden;
+}
 
-  .col-description {
-    display: none;
-  }
+.role-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
 
-  .action-buttons {
+.role-card--admin {
+  border-left: 4px solid var(--color-primary);
+}
+
+.role-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-wrap: wrap;
+}
+
+.role-card-body {
+  padding: var(--spacing-md);
+}
+
+.role-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.role-card-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-card-footer {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-background);
+}
+
+.role-card-footer .action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .role-card-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .role-card-footer .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .role-card-footer .action-buttons .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
