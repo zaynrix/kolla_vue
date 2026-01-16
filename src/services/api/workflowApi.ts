@@ -149,10 +149,10 @@ export class WorkflowApiService {
     if (request.name !== undefined) {
       try {
         console.log('[WorkflowApi] Updating display name:', request.name)
-        await this.apiClient.patch<void>(
-          `/Objective/SetDisplayName`,
-          { Guid: id, DisplayName: request.name }
-        )
+      await this.apiClient.patch<void>(
+        `/Objective/SetDisplayName`,
+        { Guid: id, DisplayName: request.name }
+      )
         console.log('[WorkflowApi] Display name updated successfully')
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to update display name'
@@ -164,10 +164,10 @@ export class WorkflowApiService {
     if (request.description !== undefined) {
       try {
         console.log('[WorkflowApi] Updating description:', request.description)
-        await this.apiClient.patch<void>(
-          `/Objective/SetDescription`,
-          { Guid: id, Description: request.description ?? null }
-        )
+      await this.apiClient.patch<void>(
+        `/Objective/SetDescription`,
+        { Guid: id, Description: request.description ?? null }
+      )
         console.log('[WorkflowApi] Description updated successfully')
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to update description'
@@ -194,23 +194,23 @@ export class WorkflowApiService {
     // Fetch updated objective
     try {
       console.log('[WorkflowApi] Fetching updated objective:', id)
-      const objective = await this.apiClient.get<ObjectiveDto>(
-        `/Objective/Get/${id}`
-      )
+    const objective = await this.apiClient.get<ObjectiveDto>(
+      `/Objective/Get/${id}`
+    )
       console.log('[WorkflowApi] Fetched updated objective:', objective)
-      
-      return {
-        id: objective.guid,
-        name: objective.displayName,
-        description: objective.description,
-        workSteps: [],
-        objectives: [],
-        createdBy: 'system',
-        workflowManagerId: 'system',
-        tenantId: request.tenantId,
+    
+    return {
+      id: objective.guid,
+      name: objective.displayName,
+      description: objective.description,
+      workSteps: [],
+      objectives: [],
+      createdBy: 'system',
+      workflowManagerId: 'system',
+      tenantId: request.tenantId,
         deadline: objective.deadlineDate ? new Date(objective.deadlineDate) : undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch updated workflow'

@@ -108,7 +108,7 @@ export function mapAssignmentToWorkStep(
     const deadlineDate = new Date(assignment.deadlineDate)
     if (!isNaN(startDate.getTime()) && !isNaN(deadlineDate.getTime()) && deadlineDate > startDate) {
       const diffMs = deadlineDate.getTime() - startDate.getTime()
-      duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
+        duration = Math.round(diffMs / (1000 * 60 * 60)) // Convert to hours
     }
   }
   

@@ -55,9 +55,9 @@ export class AssignmentApiService {
         throw new Error('Invalid date format for startDate or deadlineDate')
       }
       
-      if (deadlineDate <= startDate) {
-        throw new Error('DeadlineDate must be after StartDate')
-      }
+        if (deadlineDate <= startDate) {
+          throw new Error('DeadlineDate must be after StartDate')
+        }
       
       // Calculate duration in hours
       const diffMs = deadlineDate.getTime() - startDate.getTime()
@@ -128,7 +128,7 @@ export class AssignmentApiService {
     if (duration <= 0) {
       throw new Error('Duration must be greater than 0')
     }
-    
+
     await this.apiClient.patch<void>(`/Assignment/SetDuration`, {
       Guid: guid,
       Duration: duration,

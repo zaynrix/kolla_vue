@@ -78,15 +78,29 @@
             <h2 class="section-title">Workflows</h2>
             <p class="section-subtitle">Create and manage your workflow processes</p>
           </div>
-          <button
-            @click="showCreateForm = !showCreateForm"
-            class="btn btn--primary"
-          >
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            <span>Create New Workflow</span>
-          </button>
+          <div class="section-actions">
+            <button
+              @click="handleAddTestWorkflows"
+              :disabled="creatingTestWorkflows"
+              class="btn btn--test"
+              title="Add multiple test workflows for testing"
+            >
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span v-if="creatingTestWorkflows">Creating...</span>
+              <span v-else>Add Test Workflows</span>
+            </button>
+            <button
+              @click="showCreateForm = !showCreateForm"
+              class="btn btn--primary"
+            >
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              <span>Create New Workflow</span>
+            </button>
+          </div>
         </div>
 
         <!-- Create Workflow Form -->
@@ -172,7 +186,8 @@ import CreateWorkflowForm from '@/components/containers/CreateWorkflowForm.vue'
 
 const selectedWorkflowId = ref<string | null>(null)
 const showCreateForm = ref(false)
-const { workflows, loading, error, loadWorkflows } = useWorkflow()
+const creatingTestWorkflows = ref(false)
+const { workflows, loading, error, loadWorkflows, createWorkflow } = useWorkflow()
 const { loadWorkSteps } = useWorkStep()
 const { currentUser, setCurrentUser } = useUser()
 const { actors, loadActors } = useActor()
@@ -187,6 +202,92 @@ async function handleWorkflowCreated(workflowId: string) {
 function handleWorkflowDeleted(workflowId: string) {
   selectedWorkflowId.value = null
   // Workflows list will be reloaded by WorkflowDetailsPanel
+}
+
+async function handleAddTestWorkflows() {
+  if (creatingTestWorkflows.value) return
+
+  const now = new Date()
+  const testWorkflows = [
+    {
+      name: 'Website Redesign Project',
+      description: 'Complete redesign of company website with modern UI/UX',
+      deadline: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    },
+    {
+      name: 'Mobile App Development',
+      description: 'Build a new mobile application for iOS and Android',
+      deadline: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+    },
+    {
+      name: 'Marketing Campaign Q1',
+      description: 'Launch new marketing campaign for Q1 2024',
+      deadline: new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
+    },
+    {
+      name: 'Database Migration',
+      description: 'Migrate legacy database to new cloud infrastructure',
+      deadline: new Date(now.getTime() + 20 * 24 * 60 * 60 * 1000), // 20 days from now
+    },
+    {
+      name: 'Customer Support System',
+      description: 'Implement new customer support ticketing system',
+      deadline: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000), // 25 days from now
+    },
+    {
+      name: 'Security Audit',
+      description: 'Comprehensive security audit and vulnerability assessment',
+      deadline: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+    },
+  ]
+
+  creatingTestWorkflows.value = true
+  const created: string[] = []
+  const failed: string[] = []
+
+  try {
+    for (const workflow of testWorkflows) {
+      try {
+        // Check if workflow already exists
+        const exists = workflows.value.some(w => w.name.toLowerCase() === workflow.name.toLowerCase())
+        if (exists) {
+          console.log(`[Test Workflows] Workflow "${workflow.name}" already exists, skipping...`)
+          continue
+        }
+
+        await createWorkflow({
+          name: workflow.name,
+          description: workflow.description,
+          deadline: workflow.deadline.toISOString(),
+          workflowManagerId: currentUser.value?.id,
+          tenantId: currentUser.value?.tenantId,
+        })
+        created.push(workflow.name)
+        console.log(`[Test Workflows] Created workflow: ${workflow.name}`)
+      } catch (err) {
+        console.error(`[Test Workflows] Failed to create workflow "${workflow.name}":`, err)
+        failed.push(workflow.name)
+      }
+    }
+
+    await Promise.all([loadWorkflows(), loadWorkSteps()])
+
+    if (created.length > 0) {
+      const message = failed.length > 0
+        ? `Created ${created.length} test workflow(s). ${failed.length} workflow(s) failed.`
+        : `Successfully created ${created.length} test workflow(s)!`
+      alert(message)
+    } else if (failed.length > 0) {
+      alert(`Failed to create test workflows. They may already exist.`)
+    } else {
+      alert('All test workflows already exist.')
+    }
+  } catch (err) {
+    console.error('[Test Workflows] Error creating test workflows:', err)
+    alert('An error occurred while creating test workflows. Please check the console for details.')
+  } finally {
+    creatingTestWorkflows.value = false
+  }
 }
 
 // Load actors and set current user
@@ -463,6 +564,13 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.section-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .section-title-wrapper {
   flex: 1;
   min-width: 0;
@@ -513,6 +621,23 @@ onMounted(async () => {
 }
 
 .btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--test {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.btn--test:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn--test:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

@@ -70,12 +70,26 @@
           <h2>All Users</h2>
           <p class="section-subtitle">View and manage all system users</p>
         </div>
-        <button @click="showCreateForm = !showCreateForm" class="btn btn--primary">
-          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          <span>{{ showCreateForm ? 'Cancel' : 'Create New User' }}</span>
-        </button>
+        <div class="section-actions">
+          <button 
+            @click="handleAddTestUsers" 
+            :disabled="creatingTestUsers"
+            class="btn btn--test"
+            title="Add multiple test users for testing"
+          >
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span v-if="creatingTestUsers">Creating...</span>
+            <span v-else>Add Test Users</span>
+          </button>
+          <button @click="showCreateForm = !showCreateForm" class="btn btn--primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>{{ showCreateForm ? 'Cancel' : 'Create New User' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Search Field and Users Table -->
@@ -295,8 +309,9 @@ import type { ActorDto, RoleDto } from '@/types/api'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { actors, loading, error, loadActors, deleteActor } = useActor()
+const { actors, loading, error, loadActors, deleteActor, createActor } = useActor()
 const { roles, loadRoles } = useRole()
+const creatingTestUsers = ref(false)
 const { workSteps, loadWorkSteps } = useWorkStep()
 const isAdmin = computed(() => userStore.isAdmin)
 const showCreateForm = ref(false)
@@ -402,6 +417,81 @@ async function handleDelete(guid: string) {
     console.error('Failed to delete actor:', err)
     const errorMessage = err instanceof Error ? err.message : 'Failed to delete user. Please try again.'
     alert(errorMessage)
+  }
+}
+
+async function handleAddTestUsers() {
+  if (creatingTestUsers.value) return
+
+  // Ensure roles are loaded
+  if (roles.value.length === 0) {
+    await loadRoles()
+  }
+
+  // Get available roles (prefer non-admin roles for test users)
+  const availableRoles = roles.value.filter(r => !r.isAdmin)
+  const adminRole = roles.value.find(r => r.isAdmin)
+
+  // If no roles exist, show error
+  if (roles.value.length === 0) {
+    alert('No roles found. Please create roles first before adding test users.')
+    return
+  }
+
+  const testUsers = [
+    { displayName: 'John Doe', roleGuid: availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Jane Smith', roleGuid: availableRoles[1]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Bob Johnson', roleGuid: availableRoles[2]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Alice Williams', roleGuid: availableRoles[3]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Charlie Brown', roleGuid: availableRoles[4]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Diana Prince', roleGuid: availableRoles[5]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Eve Davis', roleGuid: availableRoles[6]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+    { displayName: 'Frank Miller', roleGuid: availableRoles[7]?.guid || availableRoles[0]?.guid || adminRole?.guid },
+  ]
+
+  creatingTestUsers.value = true
+  const created: string[] = []
+  const failed: string[] = []
+
+  try {
+    for (const user of testUsers) {
+      try {
+        // Check if user already exists
+        const exists = actors.value.some(a => a.displayName.toLowerCase() === user.displayName.toLowerCase())
+        if (exists) {
+          console.log(`[Test Users] User "${user.displayName}" already exists, skipping...`)
+          continue
+        }
+
+        await createActor({
+          DisplayName: user.displayName,
+          RoleGuid: user.roleGuid,
+        })
+        created.push(user.displayName)
+        console.log(`[Test Users] Created user: ${user.displayName}`)
+      } catch (err) {
+        console.error(`[Test Users] Failed to create user "${user.displayName}":`, err)
+        failed.push(user.displayName)
+      }
+    }
+
+    await Promise.all([loadActors(), loadWorkSteps()])
+
+    if (created.length > 0) {
+      const message = failed.length > 0
+        ? `Created ${created.length} test user(s). ${failed.length} user(s) failed.`
+        : `Successfully created ${created.length} test user(s)!`
+      alert(message)
+    } else if (failed.length > 0) {
+      alert(`Failed to create test users. They may already exist.`)
+    } else {
+      alert('All test users already exist.')
+    }
+  } catch (err) {
+    console.error('[Test Users] Error creating test users:', err)
+    alert('An error occurred while creating test users. Please check the console for details.')
+  } finally {
+    creatingTestUsers.value = false
   }
 }
 </script>
@@ -588,6 +678,13 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+.section-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .section-title h2 {
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
@@ -657,6 +754,7 @@ async function handleDelete(guid: string) {
   width: 100%;
   border-collapse: collapse;
   background: var(--color-surface);
+  display: table;
 }
 
 .users-table thead {
@@ -716,18 +814,34 @@ async function handleDelete(guid: string) {
 }
 
 .badge {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 12px;
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
-  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
-  color: var(--color-primary-dark);
-  display: inline-block;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
 }
 
 .badge--no-role {
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #6b7280;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.badge--no-role:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .task-count {
@@ -858,6 +972,23 @@ async function handleDelete(guid: string) {
   font-size: var(--text-xs);
 }
 
+.btn--test {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--test:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn--test:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn--disabled,
 .btn:disabled {
   opacity: 0.5;
@@ -929,19 +1060,24 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+/* Desktop Table View - Show by default */
+.users-table--desktop {
+  display: table;
+}
+
 /* Mobile Card View - Hidden on desktop */
 .users-cards--mobile {
-  display: none;
+  display: none !important;
 }
 
 /* Desktop Table View - Hidden on mobile */
 @media (max-width: 767px) {
   .users-table--desktop {
-    display: none;
+    display: none !important;
   }
 
   .users-cards--mobile {
-    display: block;
+    display: block !important;
   }
 }
 
@@ -960,6 +1096,16 @@ async function handleDelete(guid: string) {
     gap: var(--spacing-md);
   }
 
+  .section-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .section-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .users-table-container {
     overflow: visible;
   }
@@ -971,7 +1117,7 @@ async function handleDelete(guid: string) {
   flex-direction: column;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-}
+  }
 
 .user-card {
   background: var(--color-surface);
@@ -1010,7 +1156,7 @@ async function handleDelete(guid: string) {
 
 .user-stat-item {
   display: flex;
-  flex-direction: column;
+    flex-direction: column;
   gap: var(--spacing-xs);
   align-items: center;
   padding: var(--spacing-sm);

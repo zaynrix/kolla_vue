@@ -60,28 +60,28 @@ the     <!-- Header Section -->
         <div class="view-selector-container">
           <span class="view-selector-label">View:</span>
           <div class="view-toggle-group">
-            <button
+          <button
               :class="['view-toggle-btn', { 'view-toggle-btn--active': viewMode === 'board' }]"
-              @click="viewMode = 'board'"
-              title="Kanban Board View"
+            @click="viewMode = 'board'"
+            title="Kanban Board View"
               aria-label="Board View"
-            >
+          >
               <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
-              </svg>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+            </svg>
               <span class="view-toggle-text">Board</span>
-            </button>
-            <button
+          </button>
+          <button
               :class="['view-toggle-btn', { 'view-toggle-btn--active': viewMode === 'cards' }]"
-              @click="viewMode = 'cards'"
-              title="Card Grid View"
+            @click="viewMode = 'cards'"
+            title="Card Grid View"
               aria-label="Cards View"
-            >
+          >
               <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
-              </svg>
+            </svg>
               <span class="view-toggle-text">Cards</span>
-            </button>
+          </button>
           </div>
         </div>
       </div>
@@ -718,15 +718,15 @@ async function handleComplete(workStepId: string) {
   pendingCompleteWorkStepId.value = workStepId
   showConfirmation('Complete Work Step', 'Mark this work step as completed?', async () => {
     if (pendingCompleteWorkStepId.value) {
-      try {
+    try {
         await completeWorkStep(pendingCompleteWorkStepId.value)
         pendingCompleteWorkStepId.value = null
-      } catch (err) {
-        console.error('Failed to complete work step:', err)
+    } catch (err) {
+      console.error('Failed to complete work step:', err)
         showAlert('Error', 'Failed to complete work step. Please try again.', 'error')
         pendingCompleteWorkStepId.value = null
-      }
     }
+  }
   })
 }
 
@@ -845,22 +845,22 @@ async function handleDelete(workStepId: string) {
   }
 
   showConfirmation('Delete Work Step', `Are you sure you want to delete "${workStep.title}"? This action cannot be undone.`, async () => {
-    try {
-      console.log('Deleting work step:', workStepId)
-      await deleteWorkStep(workStepId)
-      console.log('Work step deleted successfully')
-      
-      // Reload work steps to reflect changes
-      if (isAdmin.value) {
-        await loadWorkSteps()
-      } else {
-        await loadMyWorkSteps()
-      }
-    } catch (err) {
-      console.error('Failed to delete work step:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete work step. Please try again.'
-      showAlert('Error', errorMessage, 'error')
+  try {
+    console.log('Deleting work step:', workStepId)
+    await deleteWorkStep(workStepId)
+    console.log('Work step deleted successfully')
+    
+    // Reload work steps to reflect changes
+    if (isAdmin.value) {
+      await loadWorkSteps()
+    } else {
+      await loadMyWorkSteps()
     }
+  } catch (err) {
+    console.error('Failed to delete work step:', err)
+    const errorMessage = err instanceof Error ? err.message : 'Failed to delete work step. Please try again.'
+      showAlert('Error', errorMessage, 'error')
+  }
   })
 }
 

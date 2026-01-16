@@ -44,13 +44,26 @@
     <div class="panel-worksteps">
       <div class="worksteps-header">
         <h3>Work Steps</h3>
-        <button
-          v-if="canManage"
-          @click="showCreateStepForm = !showCreateStepForm"
-          class="btn btn--primary btn--small"
-        >
-          + Add Work Step
-        </button>
+        <div v-if="canManage" class="worksteps-actions">
+          <button
+            @click="handleAddTestWorkSteps"
+            :disabled="creatingTestSteps"
+            class="btn btn--test btn--small"
+            title="Add multiple test work steps for testing"
+          >
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span v-if="creatingTestSteps">Creating...</span>
+            <span v-else>Add Test Steps</span>
+          </button>
+          <button
+            @click="showCreateStepForm = !showCreateStepForm"
+            class="btn btn--primary btn--small"
+          >
+            + Add Work Step
+          </button>
+        </div>
       </div>
 
       <!-- Create Work Step Form -->
@@ -167,9 +180,10 @@ import EditWorkStepForm from './EditWorkStepForm.vue'
 import EditWorkflowForm from './EditWorkflowForm.vue'
 import ActorWorkStepsView from './ActorWorkStepsView.vue'
 import { useActor } from '@/composables/useActor'
+import { useRole } from '@/composables/useRole'
 import { useWorkStepStore } from '@/stores/workStep'
 import type { WorkStep, Priority, User } from '@/types/domain'
-import { Priority as PriorityEnum } from '@/types/domain'
+import { Priority as PriorityEnum, Role } from '@/types/domain'
 
 interface Props {
   workflowId: string
@@ -184,11 +198,13 @@ const emit = defineEmits<{
 }>()
 
 const { workflows, loadWorkflows, deleteWorkflow } = useWorkflow()
-const { workSteps, loadWorkSteps: reloadWorkSteps, deleteWorkStep } = useWorkStep()
+const { workSteps, loadWorkSteps: reloadWorkSteps, deleteWorkStep, createWorkStep } = useWorkStep()
 const { getWorkflowProgress } = useWorkflowManager()
 const { canManageWorkflow: checkCanManageWorkflow } = useAuthorization()
 const { completeWorkStep, loadWorkSteps } = useWorkStep()
 const { actors, loadActors } = useActor()
+const { roles, loadRoles } = useRole()
+const creatingTestSteps = ref(false)
 
 const showCreateStepForm = ref(false)
 const showEditStepForm = ref(false)
@@ -327,6 +343,108 @@ const assignedUsersMap = computed(() => {
 async function handleWorkStepCreated(workStepId: string) {
   showCreateStepForm.value = false
   await reloadWorkSteps()
+}
+
+async function handleAddTestWorkSteps() {
+  if (creatingTestSteps.value || !workflow.value) return
+
+  // Ensure actors and roles are loaded
+  if (actors.value.length === 0) {
+    await loadActors()
+  }
+  if (roles.value.length === 0) {
+    await loadRoles()
+  }
+
+  // Get available actors and roles
+  const availableActors = actors.value.filter(a => !a.role?.isAdmin)
+  const availableRoles = roles.value.filter(r => !r.isAdmin)
+  const defaultRole = availableRoles[0] || roles.value[0]
+
+  if (availableActors.length === 0) {
+    alert('No users found. Please create users first before adding test work steps.')
+    return
+  }
+
+  // Calculate dates based on workflow deadline
+  const now = new Date()
+  const workflowDeadline = workflow.value.deadline ? new Date(workflow.value.deadline) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const daysUntilDeadline = Math.max(1, Math.floor((workflowDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+  const stepDuration = Math.max(1, Math.floor(daysUntilDeadline / 8)) // Divide remaining time into 8 steps
+
+  const testSteps = [
+    { title: 'Requirements Gathering', description: 'Collect and document all project requirements', duration: stepDuration * 24 },
+    { title: 'Design Phase', description: 'Create UI/UX designs and mockups', duration: stepDuration * 24 },
+    { title: 'Development Setup', description: 'Set up development environment and tools', duration: stepDuration * 24 },
+    { title: 'Backend Development', description: 'Implement backend APIs and services', duration: stepDuration * 24 },
+    { title: 'Frontend Development', description: 'Build user interface components', duration: stepDuration * 24 },
+    { title: 'Integration Testing', description: 'Test integration between components', duration: stepDuration * 24 },
+    { title: 'User Acceptance Testing', description: 'Conduct UAT with stakeholders', duration: stepDuration * 24 },
+    { title: 'Deployment', description: 'Deploy to production environment', duration: stepDuration * 24 },
+  ]
+
+  creatingTestSteps.value = true
+  const created: string[] = []
+  const failed: string[] = []
+
+  try {
+    // Calculate next sequence number
+    const currentMaxSequence = sortedWorkSteps.value.length > 0
+      ? Math.max(...sortedWorkSteps.value.map(ws => ws.sequenceNumber || 0))
+      : 0
+
+    for (let i = 0; i < testSteps.length; i++) {
+      try {
+        const step = testSteps[i]
+        const sequenceNumber = currentMaxSequence + i + 1
+        
+        // Calculate start and deadline dates
+        const startDate = new Date(now.getTime() + i * stepDuration * 24 * 60 * 60 * 1000)
+        const deadlineDate = new Date(startDate.getTime() + step.duration * 60 * 60 * 1000)
+
+        // Ensure deadline doesn't exceed workflow deadline
+        if (deadlineDate > workflowDeadline) {
+          deadlineDate.setTime(workflowDeadline.getTime())
+        }
+
+        // Assign to random actor
+        const assignedActor = availableActors[i % availableActors.length]
+
+        await createWorkStep({
+          title: step.title,
+          description: step.description,
+          duration: step.duration,
+          workflowId: props.workflowId,
+          sequenceNumber: sequenceNumber,
+          requiredRole: Role.TEAM_MEMBER,
+          assignedTo: assignedActor.guid,
+          startDate: startDate.toISOString(),
+          deadlineDate: deadlineDate.toISOString(),
+        })
+        created.push(step.title)
+        console.log(`[Test Work Steps] Created step: ${step.title}`)
+      } catch (err) {
+        console.error(`[Test Work Steps] Failed to create step "${testSteps[i].title}":`, err)
+        failed.push(testSteps[i].title)
+      }
+    }
+
+    await reloadWorkSteps()
+
+    if (created.length > 0) {
+      const message = failed.length > 0
+        ? `Created ${created.length} test work step(s). ${failed.length} step(s) failed.`
+        : `Successfully created ${created.length} test work step(s)!`
+      alert(message)
+    } else if (failed.length > 0) {
+      alert(`Failed to create test work steps. Please check the console for details.`)
+    }
+  } catch (err) {
+    console.error('[Test Work Steps] Error creating test work steps:', err)
+    alert('An error occurred while creating test work steps. Please check the console for details.')
+  } finally {
+    creatingTestSteps.value = false
+  }
 }
 
 function handleEdit(workStep: WorkStep) {
@@ -479,6 +597,16 @@ async function handleWorkflowUpdated(workflowId: string) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.worksteps-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
   margin-bottom: var(--spacing-lg);
 }
 
@@ -613,6 +741,23 @@ async function handleWorkflowUpdated(workflowId: string) {
 
 .btn--danger:hover {
   background: #d32f2f;
+}
+
+.btn--test {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.btn--test:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn--test:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .card-actions-group {

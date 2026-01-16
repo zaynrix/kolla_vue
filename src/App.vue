@@ -168,16 +168,16 @@ onUnmounted(() => {
 
       <!-- Mobile Navigation Drawer - Must be outside app-main to be above all content -->
       <Teleport to="body">
-        <transition name="drawer">
+      <transition name="drawer">
           <div 
             v-if="showMobileMenu" 
             class="drawer-overlay" 
             @click="closeMobileMenu"
             @touchstart.prevent="closeMobileMenu"
           ></div>
-        </transition>
-        
-        <transition name="drawer-slide">
+      </transition>
+      
+      <transition name="drawer-slide">
           <aside 
             v-if="showMobileMenu" 
             class="drawer"
@@ -261,8 +261,8 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
-          </aside>
-        </transition>
+        </aside>
+      </transition>
       </Teleport>
     </header>
 

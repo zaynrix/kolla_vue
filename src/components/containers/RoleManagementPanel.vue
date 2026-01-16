@@ -70,12 +70,26 @@
           <h2>All Roles</h2>
           <p class="section-subtitle">View and manage all system roles</p>
         </div>
-        <button @click="showCreateForm = !showCreateForm" class="btn btn--primary">
-          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          <span>{{ showCreateForm ? 'Cancel' : 'Create New Role' }}</span>
-        </button>
+        <div class="section-actions">
+          <button 
+            @click="handleAddTestRoles" 
+            :disabled="creatingTestRoles"
+            class="btn btn--test"
+            title="Add multiple test roles for testing"
+          >
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span v-if="creatingTestRoles">Creating...</span>
+            <span v-else>Add Test Roles</span>
+          </button>
+          <button @click="showCreateForm = !showCreateForm" class="btn btn--primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>{{ showCreateForm ? 'Cancel' : 'Create New Role' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Roles List -->
@@ -255,10 +269,11 @@ import type { RoleDto } from '@/types/api'
 
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isAdmin)
-const { roles, loading, error, loadRoles, deleteRole } = useRole()
+const { roles, loading, error, loadRoles, deleteRole, createRole } = useRole()
 const showCreateForm = ref(false)
 const showEditForm = ref(false)
 const editingRole = ref<RoleDto | null>(null)
+const creatingTestRoles = ref(false)
 
 onMounted(async () => {
   await loadRoles()
@@ -291,6 +306,63 @@ async function handleDelete(guid: string) {
   } catch (err) {
     console.error('Failed to delete role:', err)
     alert('Failed to delete role. Please try again.')
+  }
+}
+
+async function handleAddTestRoles() {
+  if (creatingTestRoles.value) return
+
+  const testRoles = [
+    { displayName: 'Developer', description: 'Software developer role', isAdmin: false },
+    { displayName: 'Designer', description: 'UI/UX designer role', isAdmin: false },
+    { displayName: 'Tester', description: 'Quality assurance tester role', isAdmin: false },
+    { displayName: 'Manager', description: 'Project manager role', isAdmin: false },
+    { displayName: 'Analyst', description: 'Business analyst role', isAdmin: false },
+    { displayName: 'Lead Developer', description: 'Senior developer and team lead', isAdmin: false },
+    { displayName: 'Product Owner', description: 'Product owner role', isAdmin: false },
+    { displayName: 'Scrum Master', description: 'Scrum master role', isAdmin: false },
+  ]
+
+  creatingTestRoles.value = true
+  const created: string[] = []
+  const failed: string[] = []
+
+  try {
+    for (const role of testRoles) {
+      try {
+        // Check if role already exists
+        const exists = roles.value.some(r => r.displayName.toLowerCase() === role.displayName.toLowerCase())
+        if (exists) {
+          console.log(`[Test Roles] Role "${role.displayName}" already exists, skipping...`)
+          continue
+        }
+
+        await createRole(role)
+        created.push(role.displayName)
+        console.log(`[Test Roles] Created role: ${role.displayName}`)
+      } catch (err) {
+        console.error(`[Test Roles] Failed to create role "${role.displayName}":`, err)
+        failed.push(role.displayName)
+      }
+    }
+
+    await loadRoles()
+
+    if (created.length > 0) {
+      const message = failed.length > 0
+        ? `Created ${created.length} test role(s). ${failed.length} role(s) failed.`
+        : `Successfully created ${created.length} test role(s)!`
+      alert(message)
+    } else if (failed.length > 0) {
+      alert(`Failed to create test roles. They may already exist.`)
+    } else {
+      alert('All test roles already exist.')
+    }
+  } catch (err) {
+    console.error('[Test Roles] Error creating test roles:', err)
+    alert('An error occurred while creating test roles. Please check the console for details.')
+  } finally {
+    creatingTestRoles.value = false
   }
 }
 </script>
@@ -477,6 +549,13 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+.section-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .section-title h2 {
   font-size: var(--text-xl);
   font-weight: var(--font-bold);
@@ -503,6 +582,7 @@ async function handleDelete(guid: string) {
   width: 100%;
   border-collapse: collapse;
   background: var(--color-surface);
+  display: table;
 }
 
 .roles-table thead {
@@ -580,26 +660,46 @@ async function handleDelete(guid: string) {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .badge-icon {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
 }
 
 .badge--admin {
-  background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
-  color: #1e40af;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.badge--admin:hover {
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
 }
 
 .badge--no-admin {
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #6b7280;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.badge--no-admin:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .col-name {
@@ -708,6 +808,23 @@ async function handleDelete(guid: string) {
   font-size: var(--text-xs);
 }
 
+.btn--test {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--test:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn--test:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .empty-state {
   display: flex;
   align-items: center;
@@ -772,19 +889,24 @@ async function handleDelete(guid: string) {
   border: 1px solid var(--color-border-light);
 }
 
+/* Desktop Table View - Show by default */
+.roles-table--desktop {
+  display: table;
+}
+
 /* Mobile Card View - Hidden on desktop */
 .roles-cards--mobile {
-  display: none;
+  display: none !important;
 }
 
 /* Desktop Table View - Hidden on mobile */
 @media (max-width: 767px) {
   .roles-table--desktop {
-    display: none;
+    display: none !important;
   }
 
   .roles-cards--mobile {
-    display: block;
+    display: block !important;
   }
 }
 
@@ -801,6 +923,16 @@ async function handleDelete(guid: string) {
   .section-header {
     flex-direction: column;
     gap: var(--spacing-md);
+  }
+
+  .section-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .section-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .roles-list-container {
