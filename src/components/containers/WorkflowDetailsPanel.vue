@@ -396,6 +396,11 @@ async function handleAddTestWorkSteps() {
     for (let i = 0; i < testSteps.length; i++) {
       try {
         const step = testSteps[i]
+        if (!step) {
+          console.error(`[Test Work Steps] Step at index ${i} is undefined`)
+          continue
+        }
+        
         const sequenceNumber = currentMaxSequence + i + 1
         
         // Calculate start and deadline dates
@@ -409,6 +414,11 @@ async function handleAddTestWorkSteps() {
 
         // Assign to random actor
         const assignedActor = availableActors[i % availableActors.length]
+        if (!assignedActor) {
+          console.error(`[Test Work Steps] No actor available for step "${step.title}"`)
+          failed.push(step.title)
+          continue
+        }
 
         await createWorkStep({
           title: step.title,
@@ -424,8 +434,10 @@ async function handleAddTestWorkSteps() {
         created.push(step.title)
         console.log(`[Test Work Steps] Created step: ${step.title}`)
       } catch (err) {
-        console.error(`[Test Work Steps] Failed to create step "${testSteps[i].title}":`, err)
-        failed.push(testSteps[i].title)
+        const step = testSteps[i]
+        const stepTitle = step?.title || `Step ${i}`
+        console.error(`[Test Work Steps] Failed to create step "${stepTitle}":`, err)
+        failed.push(stepTitle)
       }
     }
 
