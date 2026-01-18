@@ -599,6 +599,7 @@ async function handleWorkflowUpdated(workflowId: string) {
   align-items: center;
   gap: var(--spacing-md);
   flex-wrap: wrap;
+  margin-bottom: var(--spacing-lg);
 }
 
 .worksteps-actions {
@@ -606,8 +607,6 @@ async function handleWorkflowUpdated(workflowId: string) {
   gap: var(--spacing-sm);
   align-items: center;
   flex-wrap: wrap;
-}
-  margin-bottom: var(--spacing-lg);
 }
 
 .worksteps-header h3 {
